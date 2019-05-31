@@ -1,0 +1,54 @@
+---
+title: Juvenile salmon migration report; northern Strait of Georgia to Johnstone Strait
+output:
+  rmarkdown::pdf_document:
+    
+    fig_caption: yes
+    includes:
+      in_header: figure_opts.tex
+    latex_engine: xelatex
+sansfont: Times New Roman
+fontsize: 12pt
+
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{sectsty} \sectionfont{\centering \emph}
+      
+---
+
+\begin{center}
+\large
+— Hakai Institute Juvenile Salmon Program 2019 —
+\end{center}
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE)
+library(tidyverse)
+library(lubridate)
+library(here)
+library(googlesheets)
+library(ggridges)
+library(hakaiApi)
+options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
+theme_set(theme_bw())
+```
+
+```{r data import}
+# use google sheets pkg to load in current google sheets for data entry
+```
+
+
+
+# Migration Timing
+
+# Fish lengths
+
+# Parasite loads
+
+# Prey quality
+
+Size fractioned biomass and energy density measurements
+
+# Stomach fullness
+
+# Ocean Temperatures
