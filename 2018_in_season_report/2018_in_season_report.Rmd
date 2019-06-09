@@ -291,7 +291,7 @@ The following plots are subject to change as the underlying data are preliminary
 
 We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
 
-__Report prepared by:__ Brett Johnson, Carly Janusson, Julian Gan, and Brian Hunt  
+__Report prepared by:__ Brett Johnson, Julian Gan, and Brian Hunt  
 __Updated:__ `r Sys.Date()`  
 
 

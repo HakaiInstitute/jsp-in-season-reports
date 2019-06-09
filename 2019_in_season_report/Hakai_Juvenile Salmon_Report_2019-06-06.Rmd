@@ -2,7 +2,6 @@
 title: Juvenile salmon migration report; northern Strait of Georgia to Johnstone Strait
 output:
   rmarkdown::pdf_document:
-    
     fig_caption: yes
     includes:
       in_header: figure_opts.tex
@@ -85,7 +84,7 @@ average_temps <- read_csv(here("data", "average_temps.csv"))
 
 ## Aim 
 
-To provide regular in-season summaries of juvenile salmon migration catch statistics, health indices, and oceanographic conditions in the northern Strait of Georgia to Johnstone Strait region. 
+To provide regular in-season summaries of juvenile salmon migration catch statistics, health indices, and oceanographic conditions in the northern Strait of Georgia to Johnstone Strait region in B.C.Canada. 
 
 ## Background
 
@@ -107,13 +106,28 @@ health;
 4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and
 health.
 
+5) Estimate the mortality rates of juvenile salmon during their Strait of Georgia to Queen Charlotte Strait migration.
+
 ## Key Parameters Reported
+
 * Catch Statistics
 * Lengths
 * Parasite Loads
 * Oceanographic Conditions
 
+See our interactive data explorer for more information https://hecate.hakai.org/shiny/JSP/
+
+The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance. 
+
+We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
+
 ![Salmon sampling locations in the Discovery Islands and Johnstone Strait in 2019.](./figs/map_2018.jpg)
+
+
+
+__Report prepared by:__ Brett Johnson, Julian Gan, and Brian Hunt  
+__Updated:__ `r Sys.Date()`  
+
 
 # Migration Timing
 
@@ -156,9 +170,8 @@ so_abund_timing
 
 # Fish lengths
 
-```{r}
+```{r, fig.cap = "Fork length boxplots of juvenile salmon in the Discovery Islands in 2019 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2018."}
 
-#TODO REMOVE end of season from time series for comparison of this years results only
 annual_di_length_histo <- hakaisalmon::survey_seines_fish %>% 
   select(sampling_week, survey_date, region, species, fork_length) %>% 
   filter(species %in% c("SO", "PI", "CU"), region == "DI",
@@ -227,7 +240,7 @@ sea_lice_2019_summary <- fish_and_sealice_field_data %>%
 
 ### Motile Sea Lice Prevalence
 
-```{r Lice Prevalence, fig.cap= "The proportion of juvenile chum, pink and sockeye that had at least one motile sea louse of either _Lepeoptheirus salmonis_ and _Caligus clemensi_ in the Discovery Islands (DI) and Johnstone Strait (JS) in 2019. Instances of zero prevalence are labelled as such."}
+```{r, fig.cap= "The proportion of juvenile chum, pink and sockeye that had at least one motile sea louse of either _Lepeoptheirus salmonis_ and _Caligus clemensi_ in the Discovery Islands (DI) and Johnstone Strait (JS) in 2019. Instances of zero prevalence are labelled as such."}
 # Summarize data to calcuate the average prevalence by region and sampling week with SD
 
 motile_caligus_infected_hosts <- sea_lice_2019_summary %>%
@@ -282,7 +295,7 @@ motile_sea_lice_2019_prevalence_plot
 
 ### Motile Sea Lice Abundance
 
-```{r Motile Caligus and Lep abundance on chum. pink, and sockeye , fig.cap = "The abundance  ± SE of __motile__ _Lepeoptheirus salmonis_ and _Caligus clemensi_ sea lice combined infecting juvenile chum, pink and sockeye salmon in the Discovery Islands and Johnstone Strait in 2019."}
+```{r, fig.cap = "The abundance  ± SE of __motile__ _Lepeoptheirus salmonis_ and _Caligus clemensi_ sea lice combined infecting juvenile chum, pink and sockeye salmon in the Discovery Islands and Johnstone Strait in 2019."}
 
 sea_lice_2019_mot <- sea_lice_2019_summary %>% 
   select(region, species, sampling_week, motile_caligus, motile_lep) %>% 
@@ -331,8 +344,8 @@ motile_abundance_plot
 
 \newpage
 
-#### Motile Sea Lice Infection Intensity 
-```{r Lice cal intensity, echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, fig.cap = "The mean infection intensity ± SE of __motile__ _Lepeoptheirus salmonis_ and _Caligus clemensi_ sea lice per juvenile salmon infected with one or more motile _Lepeoptheirus salmonis_ and _Caligus clemensi_ louse in 2019."}
+### Motile Sea Lice Infection Intensity 
+```{r, echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, fig.cap = "The mean infection intensity ± SE of __motile__ _Lepeoptheirus salmonis_ and _Caligus clemensi_ sea lice per juvenile salmon infected with one or more motile _Lepeoptheirus salmonis_ and _Caligus clemensi_ louse in 2019."}
 
 sea_lice_2019_cal_mot_intensity <- sea_lice_2019_summary %>% 
   filter(motile_caligus > 0) %>% 
@@ -393,7 +406,8 @@ mot_intensity_plot
 
 ## Oceanography
 
-```{r}
+```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia is the solid black line which is a LOESS regression based on temperatures from 2015-2018 representing the study period average. Blue areas represent temperatures from 2019 that are below average, red areas represent above average temperatures. The shaded grey area is 1 SE of the LOESS regression. The black dots are the daily minimum and maximum temperatures observed over the study period."}
+
 temperature_anomaly_data <- temperature_anomaly_data %>% 
       filter(station == "QU39")
     
@@ -425,7 +439,6 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
                                      "Jul", "Aug"))) +
       labs(x = "Date", y = "Temperature [°C]") +
       coord_cartesian(xlim = c(32,213)) +
-  labs(title = "2019 Ocean Temperatures",
-       subtitle = "Compare 2019 (coloured red and blue) to study-period average (black line)") 
+  labs(title = "2019 Ocean Temperatures") 
 
 ```
