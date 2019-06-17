@@ -106,8 +106,6 @@ health;
 4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and
 health.
 
-5) Estimate the mortality rates of juvenile salmon during their Strait of Georgia to Queen Charlotte Strait migration.
-
 ## Key Parameters Reported
 
 * Catch Statistics
@@ -406,7 +404,7 @@ mot_intensity_plot
 
 ## Oceanography
 
-```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia is the solid black line which is a LOESS regression based on temperatures from 2015-2018 representing the study period average. Blue areas represent temperatures from 2019 that are below average, red areas represent above average temperatures. The shaded grey area is 1 SE of the LOESS regression. The black dots are the daily minimum and maximum temperatures observed over the study period."}
+```{r, fig.cap = "Figure 7: Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2018, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2019 that are below average and red areas represent above average temperatures."}
 
 temperature_anomaly_data <- temperature_anomaly_data %>% 
       filter(station == "QU39")
@@ -430,10 +428,10 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
                   fill = "#4575b4", size = 1)+
       geom_smooth(data = average_temps, aes(x = yday, y = mean_temp),
                   size = 1, colour = 'black', se = T, span = .65) +
-      geom_point(data = min_max_data,
-                 aes(x = yday, y = min_temp), size = 0.5) +
-      geom_point(data = min_max_data,
-                 aes(x = yday, y = max_temp), size = 0.5) + 
+      #geom_point(data = min_max_data,
+                 #aes(x = yday, y = min_temp), size = 0.5) +
+      #geom_point(data = min_max_data,
+                 #aes(x = yday, y = max_temp), size = 0.5) + 
       scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
                          labels = (c("Feb", "Mar", "Apr", "May", "Jun", 
                                      "Jul", "Aug"))) +
