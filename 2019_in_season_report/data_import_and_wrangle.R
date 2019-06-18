@@ -119,8 +119,9 @@ qu39_average <- ctd_all %>%
 qu39_this_year <- ctd_post_time_series %>%
   filter(station == "QU39")
 
+write_csv(qu39_this_year, here("data", "qu39_this_year.csv"))
 temp.lo_qu39 <-
-  loess(mean_temp ~ yday, qu39_average, SE = T, span = 0.65)
+  loess(mean_temp ~ yday, qu39_average, SE = T, span = 0.35)
 
 #create table for predicitions from loess function
 sim_temp_data_qu39 <-
