@@ -1,6 +1,7 @@
 #DATA IMPORT
 library(tidyverse)
 library(lubridate)
+library(here)
 
 # Get CTD data from EIMS database using R API
 
@@ -85,9 +86,6 @@ ctd_all <- rbind(qu39_all, qu29_all, js2_12_all) %>%
     mean_salinity = mean(salinity, na.rm = T)
   )
 
-saveRDS(ctd_all, here::here("data", "ctd_all.RDS"))
-write_csv(ctd_all, here::here("data", "ctd_all.csv"))
-
 ## Create current year data to compare to time series
 ctd_post_time_series <- rbind(qu39_all, qu29_all, js2_12_all) %>%
   filter(year == 2019, yday > 32, yday < 213,  depth <= 30) %>%
@@ -119,7 +117,8 @@ qu39_average <- ctd_all %>%
 qu39_this_year <- ctd_post_time_series %>%
   filter(station == "QU39")
 
-write_csv(qu39_this_year, here("data", "qu39_this_year.csv"))
+write_csv(qu39_this_year, here::here("data", "qu39_this_year.csv"))
+
 temp.lo_qu39 <-
   loess(mean_temp ~ yday, qu39_average, SE = T, span = 0.35)
 
@@ -163,7 +162,14 @@ qu39_temp_anomaly_data <-
     yday = (155 + 149) / 2,
     predicted_mean_temp = predict(temp.lo_qu39, (155 + 149) / 2),
     mean_temp = predict(temp.lo_qu39, (155 + 149) / 2)
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (176 + 184) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (176 + 184) / 2),
+    mean_temp = predict(temp.lo_qu39, (176 + 184) / 2)
   )
+
 
 # Create min and max for any given day of the time series
 qu39_min_max <- qu39_all %>%
@@ -273,19 +279,16 @@ js2_12_min_max <- js2_12_all %>%
 
 
 min_max_data <- rbind(js2_12_min_max, qu39_min_max, qu29_min_max)
-saveRDS(min_max_data,  here::here("data", "min_max_temps.RDS"))
-write_csv(min_max_data,  here::here("data", "min_max_temps.csv"))
 
 average_temps <- rbind(qu39_average, qu29_average, js2_12_average)
-saveRDS(average_temps, here::here("data", "average_temps.RDS"))
+
 write_csv(average_temps, here::here("data", "average_temps.csv"))
 
 temperature_anomaly_data <-
   rbind(js2_12_temp_anomaly_data,
         qu29_temp_anomaly_data,
         qu39_temp_anomaly_data)
-saveRDS(temperature_anomaly_data,
-        here::here("data", "temperature_anomaly_data.RDS"))
+
 write_csv(temperature_anomaly_data,
           here::here("data", "temperature_anomaly_data.csv"))
   
