@@ -444,8 +444,8 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
 
 * Sockeye migration timing in 2019 is later than in 2015, 2016 and 2018, and similar to 2017
 * Sockeye are large this year
-* High sea-lice loads, especially on sockeye
-* Ocean temperatures are colder than those observed in 2015, 2016, and 2018
+* High sea-lice loads
+* Spring ocean temperatures are colder than those observed in 2015, 2016, and 2018
 
 ```{r, include=FALSE}
    
