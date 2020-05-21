@@ -35,7 +35,7 @@ theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, packag
 # Import Data
 # use google sheets pkg to load in current google sheets for data entry
 
-field_2019 <- gs_key("1cHgZszv--FlV207cwSpe9hFJipb7HhS4IW9vVrUNg8M",
+field_2020 <- gs_key("1F04L3heVXck9Co6THrE8vMzuu3O4zq4NwxC8FJdL5Uk",
                      lookup = FALSE, visibility = "private")
 
 survey_data <- gs_read(field_2019, ws = "survey_data") %>% 

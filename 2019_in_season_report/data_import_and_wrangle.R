@@ -3,6 +3,8 @@ library(tidyverse)
 library(lubridate)
 library(here)
 
+current_year <- year(Sys.Date())
+
 # Get CTD data from EIMS database using R API
 
 # Run this line indpendently, check console for URL, and authorize
@@ -66,7 +68,7 @@ ctd_all <- rbind(qu39_all, qu29_all, js2_12_all) %>%
     yday = yday(start_dt),
     week = week(start_dt)
   ) %>%
-  filter(year != 2019, depth <= 30) %>%
+  filter(year != current_year, depth <= 30) %>%
   select(
     year,
     date,
@@ -88,7 +90,7 @@ ctd_all <- rbind(qu39_all, qu29_all, js2_12_all) %>%
 
 ## Create current year data to compare to time series
 ctd_post_time_series <- rbind(qu39_all, qu29_all, js2_12_all) %>%
-  filter(year == 2019, yday > 32, yday < 213,  depth <= 30) %>%
+  filter(year == current_year, yday > 32, yday < 213,  depth <= 30) %>%
   select(
     year,
     date,
