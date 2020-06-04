@@ -123,7 +123,7 @@ __Updated:__ `r Sys.Date()`
 ```{r, fig.cap="Average number (± 1 SE) of juvenile sockeye salmon caught in each seine in 2020 averaged over one week periods for each region and represented by the middle day of each week."}
 spp_labels <- c(CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
 
-avg_school_size <- as_tibble(survey_seines %>% 
+avg_school_size <- as_tibble(ss_2020 %>% 
   select(year, sampling_week, so_total) %>%
   group_by(year, sampling_week) %>% 
   summarise(mean = mean(so_total, na.rm = T),n = n(), se = sd(so_total) / sqrt(n()))) %>% 
@@ -136,7 +136,7 @@ so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_wee
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2)) +
   xlab("Date") +
   ylab("Sockeye CPUE") +
-  coord_cartesian(xlim = 1:11) +
+# coord_cartesian(xlim = 1:11) +
   theme(legend.justification=c(1,0), legend.position=c(.8,.8),
         legend.background = element_rect(fill=alpha(0.1))) + 
   theme(legend.text = element_text(colour="black", size = 12)) +
@@ -152,8 +152,8 @@ so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_wee
 so_abund_timing
 ```
 
-## Fish lengths
 
+## Fish lengths
 
 ```{r github_database_import}
 sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/sites.csv")
@@ -201,7 +201,7 @@ ss_fish_GH <- left_join(fish_GH, ss_GH, by = "seine_id")
 annual_di_length_histo <- ss_fish_GH %>% 
   select(sampling_week, survey_date, region, species, fork_length) %>% 
   filter(species %in% c("SO", "PI", "CU"), region == "DI",
-         sampling_week == c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
+         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
   mutate(year = "2015-2019",
          fork_length = as.numeric(fork_length)) %>% 
   drop_na(fork_length)
@@ -233,8 +233,42 @@ di_length_hist_plot
 
 ## Parasite presence
 
+```{r sealice, echo = FALSE, warning=FALSE, message=FALSE, error=FALSE}
 
+# sealice_field_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/sealice_field.csv") %>% 
+#   mutate(lice_count = rowSums(.[2:14], na.rm = TRUE),
+#          lice_presence = ifelse(lice_count > 0, "P", "A")
+#   ) %>% 
+#   select(ufn, lice_presence)
+# 
+# fish_lice_GH <- left_join(sealice_field_GH,
+#                           select(ss_fish_GH,
+#                                  ufn, sampling_week, survey_date, region, species),
+#                           by = "ufn"
+# ) %>% 
+#   mutate(year = "2015-2019")
 
+fish_lice_2020 <- ss_fish_2020 %>% 
+  filter(field_lice_id_protocol == "presence/absence") %>% 
+  select(ufn, lice_presence, sampling_week, survey_date, region, species) %>% 
+  group_by(sampling_week, species, lice_presence) %>% 
+  summarize(count=n()) %>% 
+  mutate(prop = count/sum(count))
+
+# fish_lice_field <- bind_rows(fish_lice_2020, fish_lice_GH) %>% 
+#   filter(species %in% c("SO", "PI", "CU"), region == "DI",
+#          sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
+#   group_by(sampling_week, species, year, lice_presence) %>% 
+#   summarize(count=n()) %>% 
+#   mutate(prop = count/sum(count),
+#          sampling_week = ordered(sampling_week, levels = c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")))
+  
+fish_lice_field_stacked_plot <- ggplot(fish_lice_2020, aes(x = sampling_week, y = prop, fill = lice_presence))+
+  geom_bar(position = "stack", stat = "identity")+
+  facet_grid(species~., labeller=labeller(species = spp_labels))
+
+fish_lice_field_stacked_plot
+```
 
 \newpage
 
