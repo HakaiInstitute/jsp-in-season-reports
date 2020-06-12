@@ -255,7 +255,7 @@ fish_lice_field_stacked_plot <- ggplot(fish_lice_2020, aes(x = sampling_week, y 
   theme(legend.text = element_text(colour="black", size = 12)) + 
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
-  scale_fill_discrete(name = "Sea-louse occurrence", labels = c("absent", "present"))+
+  scale_fill_discrete(name = "Sea-louse\noccurrence", labels = c("absent", "present"))+
   xlab("Sampling week")+
   ylab("Proportion of fish")+
   facet_grid(zone~species, labeller=labeller(species = spp_labels, zone = zone_labels))+
