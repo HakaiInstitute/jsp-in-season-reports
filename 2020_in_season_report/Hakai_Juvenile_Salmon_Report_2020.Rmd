@@ -33,7 +33,9 @@ options(scipen=999) # This removes scientific notation for inline output ie `r o
 theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, package hosted on GitHub
 ```
 
-```{r import daa, include = FALSE}
+```{r import data, include = FALSE}
+sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/sites.csv")
+
 # Use googlesheets4 pkg to load in current google sheets for data entry
 
 surveys_2020 <- read_sheet("https://docs.google.com/spreadsheets/d/1F04L3heVXck9Co6THrE8vMzuu3O4zq4NwxC8FJdL5Uk/edit#gid=0", sheet = "survey_data") %>% 
@@ -56,7 +58,8 @@ surveys_2020$sampling_week <- recode_factor(surveys_2020$sampling_week,
 seines_2020 <- read_sheet("https://docs.google.com/spreadsheets/d/1F04L3heVXck9Co6THrE8vMzuu3O4zq4NwxC8FJdL5Uk/edit#gid=0", sheet = "seine_data") %>% 
   drop_na(seine_id)
 
-ss_2020 <- left_join(surveys_2020, seines_2020) %>% 
+ss_2020 <- left_join(surveys_2020, seines_2020, by = "survey_id") %>% 
+  left_join(select(sites, site_id, zone), by = "site_id") %>% 
   mutate(year = year(survey_date)) %>% 
   drop_na(survey_id)
 
@@ -65,6 +68,9 @@ fish_field_2020 <- read_sheet("https://docs.google.com/spreadsheets/d/1F04L3heVX
   mutate(region = "DI")
 
 ss_fish_2020 <- left_join(fish_field_2020, ss_2020, by = "seine_id")
+
+spp_labels <- c(CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
+zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
 
 temperature_anomaly_data <- read_csv(here("2020_in_season_report", "data", "temperature_anomaly_data.csv"))
 average_temps <- read_csv(here("2020_in_season_report", "data", "average_temps.csv"))
@@ -110,27 +116,26 @@ The Hakai Institute embraces an "Open Science Policy"; to that end you can revie
 
 See our interactive data explorer for more information https://hecate.hakai.org/shiny/JSP/
 
-#### need a new map for 2020 showing only DI region
-![Salmon sampling locations in the Discovery Islands in 2020.](./figs/map_2020.png) 
+![Salmon sampling locations in the Discovery Islands and Johnstone Strait in 2019. The Discovery Islands sites (Inset B) remain unchanged, but Johnstone Strait (Inset A) is not being sampled in 2020.](./figs/map_2019.jpg)
 
 
-__Report prepared by:__ Brett Johnson, Julian Gan, Tim van der Stap, Krystal Bachen, and Brian Hunt  
+__Report prepared by:__ Julian Gan, Brett Johnson, Krystal Bachen, Tim van der Stap, Nicholas Sinclair, and Brian Hunt
+
 __Updated:__ `r Sys.Date()`  
 
 
 ## Migration Timing
 
-```{r, fig.cap="Average number (± 1 SE) of juvenile sockeye salmon caught in each seine in 2020 averaged over one week periods for each region and represented by the middle day of each week."}
-spp_labels <- c(CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
+```{r, fig.cap="Average number (± 1 SE) of juvenile sockeye salmon caught in each seine in 2020, averaged over one-week periods for each region, and represented by the middle day of each week."}
 
-avg_school_size <- as_tibble(ss_2020 %>% 
+avg_school_size <- as_tibble(ss_2020) %>% 
   select(year, sampling_week, so_total) %>%
   group_by(year, sampling_week) %>% 
-  summarise(mean = mean(so_total, na.rm = T),n = n(), se = sd(so_total) / sqrt(n()))) %>% 
+  summarise(mean = mean(so_total, na.rm = T),n = n(), se = sd(so_total) / sqrt(n())) %>% 
   ungroup() %>% 
   drop_na(year)
 
-so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_week), y = mean)) +
+so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_week), y = mean, group=1)) +
   geom_line(size = 1)+  
   geom_point() + 
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2)) +
@@ -156,8 +161,6 @@ so_abund_timing
 ## Fish lengths
 
 ```{r github_database_import}
-sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/sites.csv")
-
 surveys_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/survey_data.csv") %>% 
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
   left_join(select(sites,
@@ -196,7 +199,7 @@ ss_GH <- left_join(seines_GH, surveys_GH, by = "survey_id")%>%
 ss_fish_GH <- left_join(fish_GH, ss_GH, by = "seine_id")
 ```
 
-```{r, fig.cap = "Fork length boxplots of juvenile salmon in the Discovery Islands in 2020 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2019."}
+```{r, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2020 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2019."}
 
 annual_di_length_histo <- ss_fish_GH %>% 
   select(sampling_week, survey_date, region, species, fork_length) %>% 
@@ -209,9 +212,9 @@ annual_di_length_histo <- ss_fish_GH %>%
 di_length_histo_2020 <- ss_fish_2020 %>% 
   select(sampling_week, survey_date, region, species, fork_length = fork_length_field) %>% 
   filter(species %in% c("SO", "PI", "CU"), region == "DI") %>% 
+  filter(fork_length != "NA") %>% 
   mutate(year = "2020",
-         fork_length = as.numeric(fork_length)) %>% 
-  drop_na(fork_length)
+         fork_length = as.numeric(fork_length))
 
 di_length_histo <- rbind(di_length_histo_2020, annual_di_length_histo)
 
@@ -231,41 +234,32 @@ di_length_hist_plot
 \newpage
 
 
-## Parasite presence
+## Parasite Presence
 
-```{r sealice, echo = FALSE, warning=FALSE, message=FALSE, error=FALSE}
+Juvenile chum, pink, and sockeye were visually inspected for sea lice. Inspection was conducted for all life stages (both attached and motile) that could be identified with the unaided eye.
 
-# sealice_field_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/data/sealice_field.csv") %>% 
-#   mutate(lice_count = rowSums(.[2:14], na.rm = TRUE),
-#          lice_presence = ifelse(lice_count > 0, "P", "A")
-#   ) %>% 
-#   select(ufn, lice_presence)
-# 
-# fish_lice_GH <- left_join(sealice_field_GH,
-#                           select(ss_fish_GH,
-#                                  ufn, sampling_week, survey_date, region, species),
-#                           by = "ufn"
-# ) %>% 
-#   mutate(year = "2015-2019")
+```{r, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the three sampling zones within the Discovery Islands, in 2020."}
 
 fish_lice_2020 <- ss_fish_2020 %>% 
   filter(field_lice_id_protocol == "presence/absence") %>% 
-  select(ufn, lice_presence, sampling_week, survey_date, region, species) %>% 
-  group_by(sampling_week, species, lice_presence) %>% 
-  summarize(count=n()) %>% 
+  select(ufn, lice_presence, sampling_week, survey_date, region, species, zone) %>% 
+  group_by(sampling_week, species, lice_presence, zone) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(sampling_week, species, zone) %>% 
   mutate(prop = count/sum(count))
 
-# fish_lice_field <- bind_rows(fish_lice_2020, fish_lice_GH) %>% 
-#   filter(species %in% c("SO", "PI", "CU"), region == "DI",
-#          sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
-#   group_by(sampling_week, species, year, lice_presence) %>% 
-#   summarize(count=n()) %>% 
-#   mutate(prop = count/sum(count),
-#          sampling_week = ordered(sampling_week, levels = c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")))
   
 fish_lice_field_stacked_plot <- ggplot(fish_lice_2020, aes(x = sampling_week, y = prop, fill = lice_presence))+
-  geom_bar(position = "stack", stat = "identity")+
-  facet_grid(species~., labeller=labeller(species = spp_labels))
+  geom_bar(position = "stack", stat = "identity", colour="black")+
+  theme(legend.text = element_text(colour="black", size = 12)) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  scale_fill_discrete(name = "Sea-louse occurrence", labels = c("absent", "present"))+
+  xlab("Sampling week")+
+  ylab("Proportion of fish")+
+  facet_grid(zone~species, labeller=labeller(species = spp_labels, zone = zone_labels))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
 
 fish_lice_field_stacked_plot
 ```
@@ -274,7 +268,7 @@ fish_lice_field_stacked_plot
 
 ## Oceanography
 
-```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2018, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2019 that are below average and red areas represent above average temperatures."}
+```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2019, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2020 that are below average and red areas represent above-average temperatures."}
 
 temperature_anomaly_data <- temperature_anomaly_data %>% 
       filter(station == "QU39")
@@ -286,12 +280,12 @@ temperature_anomaly_data <- temperature_anomaly_data %>%
 ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
       geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
       geom_line(aes(x = yday, y = predicted_mean_temp)) +
-      geom_ribbon(data = subset(temperature_anomaly_data, 
-                                mean_temp >= predicted_mean_temp),
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp >= predicted_mean_temp & yday != 39.5), # There's a single above-average data point prior to the below-average section which causes the ribbon to render awkwardly
                   aes(ymin = predicted_mean_temp, ymax = mean_temp),
                   fill = "#d73027", size = 1)+
-      geom_ribbon(data = subset(temperature_anomaly_data, 
-                                mean_temp <= predicted_mean_temp), 
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp <= predicted_mean_temp),
                   aes(ymin = mean_temp, ymax = predicted_mean_temp),
                   fill = "#4575b4", size = 1)+
       geom_smooth(data = average_temps, aes(x = yday, y = mean_temp),
@@ -300,15 +294,16 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
       scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
                          labels = (c("Feb", "Mar", "Apr", "May", "Jun", 
                                      "Jul", "Aug"))) +
-      labs(x = "Date", y = "Temperature [°C]") +
+      labs(x = "Date", y = "Temperature (°C)") +
       coord_cartesian(xlim = c(32,213)) +
-  labs(title = "2019 Ocean Temperatures") 
+  labs(title = "2020 Ocean Temperatures") 
 
 ```
 
 ## Highlights
 
-* 
+* The first sockeye recorded in the Discovery Islands was May 19th -- several days earlier than in 2018 and 2019, but later than in 2015 and 2016.
+* The majority of sockeye caught were infected with at least one sea-louse.
 
 ```{r, include=FALSE}
 surveys_sites_2020 <- left_join(surveys_2020, 
