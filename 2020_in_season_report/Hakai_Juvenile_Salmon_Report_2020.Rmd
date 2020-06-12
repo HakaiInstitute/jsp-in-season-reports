@@ -302,7 +302,7 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
 
 ## Highlights
 
-* The first sockeye recorded in the Discovery Islands was May 19th -- several days earlier than in 2018 and 2019, but later than in 2015 and 2016.
+* The first sockeye recorded in the Discovery Islands was May 19th -- several days earlier than in 2017, 2018, and 2019, but later than in 2015 and 2016.
 * The majority of sockeye caught were infected with at least one sea-louse.
 * Spring ocean temperatures are colder than the average over the past five years. 
 
