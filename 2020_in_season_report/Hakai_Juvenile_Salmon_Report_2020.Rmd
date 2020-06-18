@@ -29,6 +29,7 @@ library(googlesheets4)
 library(ggridges)
 library(hakaiApi)
 library(here)
+library(hakaiR)
 options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
 theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, package hosted on GitHub
 ```
@@ -136,9 +137,9 @@ avg_school_size <- as_tibble(ss_2020) %>%
   drop_na(year)
 
 so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_week), y = mean, group=1)) +
-  geom_line(size = 1)+  
-  geom_point() + 
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2)) +
+  geom_line(size = 1, colour = "#d12400")+  
+  geom_point(colour = "#d12400", size = 1.75) + 
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2), colour = "#d12400") +
   xlab("Date") +
   ylab("Sockeye CPUE") +
 # coord_cartesian(xlim = 1:11) +
@@ -147,7 +148,6 @@ so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_wee
   theme(legend.text = element_text(colour="black", size = 12)) +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
-  geom_point(size = 1.75) +
   xlab("Date") +
   ylab("Mean sockeye catch abundance") +
   theme(legend.title = element_blank()) +
@@ -226,10 +226,32 @@ di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_l
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
   facet_grid(species~., labeller=labeller(species = spp_labels))+
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
-
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  scale_fill_manual(values = hakaiR::hakai_palette("Darjeeling1"))
+  
 di_length_hist_plot
 ```
+
+```{r, fig.cap = "Frequency distribution of the fork lengths of juvenile chum, pink, and sockeye salmon in the Discovery Islands in 2020."}
+
+di_length_freq_dist <- ggplot(mutate(di_length_histo_2020,
+                                     species = recode(species,
+                                                      "CU" = "Chum",
+                                                      "PI" = "Pink",
+                                                      "SO" = "Sockeye")
+                                     ),
+                                     aes(x = fork_length, fill=species)) + 
+  geom_histogram(binwidth = 5, boundary = 0, closed = "left", color = "black", show.legend = FALSE)+
+  scale_x_continuous(name = "Fork length (mm)")+
+  scale_y_continuous(name = "Number of fish", expand = expansion(mult = c(0, 0.05)))+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  facet_wrap(vars(species))+
+  scale_fill_manual(values = c("#346257", "pink", "#d12400"))
+
+di_length_freq_dist
+```
+
 
 \newpage
 
@@ -247,7 +269,10 @@ fish_lice_2020 <- ss_fish_2020 %>%
   summarize(count = n()) %>% 
   ungroup() %>% 
   group_by(sampling_week, species, zone) %>% 
-  mutate(prop = count/sum(count))
+  mutate(prop = count/sum(count),
+         lice_presence = recode(lice_presence,
+                                "A" = "Absent",
+                                "P" = "Present"))
 
   
 fish_lice_field_stacked_plot <- ggplot(fish_lice_2020, aes(x = sampling_week, y = prop, fill = lice_presence))+
@@ -255,11 +280,12 @@ fish_lice_field_stacked_plot <- ggplot(fish_lice_2020, aes(x = sampling_week, y 
   theme(legend.text = element_text(colour="black", size = 12)) + 
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
-  scale_fill_discrete(name = "Sea-louse\noccurrence", labels = c("absent", "present"))+
+  labs(fill = "Sea-louse\noccurrence")+
   xlab("Sampling week")+
   ylab("Proportion of fish")+
   facet_grid(zone~species, labeller=labeller(species = spp_labels, zone = zone_labels))+
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  scale_fill_manual(values = hakai_palette("hakai_web"))
 
 fish_lice_field_stacked_plot
 ```
@@ -296,7 +322,9 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
                                      "Jul", "Aug"))) +
       labs(x = "Date", y = "Temperature (°C)") +
       coord_cartesian(xlim = c(32,213)) +
-  labs(title = "2020 Ocean Temperatures") 
+  labs(title = "2020 Ocean Temperatures")+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold"))
 
 ```
 
