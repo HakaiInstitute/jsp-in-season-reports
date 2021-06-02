@@ -1,0 +1,328 @@
+---
+title: Juvenile salmon migration report; northern Strait of Georgia
+output:
+  rmarkdown::pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: figure_opts.tex
+    latex_engine: xelatex
+sansfont: Times New Roman
+fontsize: 12pt
+
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{sectsty} \sectionfont{\centering \emph}
+      
+---
+
+\begin{center}
+\large
+— Hakai Institute Juvenile Salmon Program 2021 —
+\end{center}
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE)
+library(tidyverse)
+library(lubridate)
+library(here)
+library(googlesheets4)
+library(ggridges)
+library(hakaiApi)
+library(here)
+library(hakaiR)
+options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
+theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, package hosted on GitHub
+
+field_data_url <- "https://docs.google.com/spreadsheets/d/1IqjeOf2mTZYRhYscct6Ra5fIzp2ruK8E3Y1DxvsZ6V8/edit#gid=00"
+```
+
+```{r import data, include = FALSE}
+sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/sites.csv")
+
+# Use googlesheets4 pkg to load in current google sheets for data entry
+
+surveys_2021 <- read_sheet(field_data_url, sheet = "survey_data") %>% 
+  drop_na(survey_id) %>% 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
+
+surveys_2021$sampling_week <- recode_factor(surveys_2021$sampling_week, 
+                                           `18` = "May 5",
+                                           `19` = "May 12" ,
+                                           `20` = "May 19", 
+                                           `21` = "May 26",
+                                           `22` = "June 2",
+                                           `23` = "June 9", 
+                                           `24` = "June 16", 
+                                           `25` = "June 23",
+                                           `26` = "June 30", 
+                                           `27` = "July 6", 
+                                           `28` = "July 13")
+
+seines_2021 <- read_sheet(field_data_url, sheet = "seine_data") %>% 
+  drop_na(seine_id)
+
+ss_2021 <- left_join(surveys_2021, seines_2021, by = "survey_id") %>% 
+  left_join(select(sites, site_id, zone), by = "site_id") %>% 
+  mutate(year = year(survey_date)) %>% 
+  drop_na(survey_id)
+
+fish_field_2021 <- read_sheet(field_data_url, sheet = "fish_field_data") %>% 
+  drop_na(ufn) %>% 
+  mutate(region = "DI")
+
+ss_fish_2021 <- left_join(fish_field_2021, ss_2021)
+
+spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
+zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
+
+# Run ctd_data_import_and_wrangle_2021.R 
+temperature_anomaly_data <- read_csv(here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
+average_temps <- read_csv(here("2021_in_season_report", "data", "average_temps.csv"))
+qu39_this_year <- read_csv(here("2021_in_season_report", "data", "qu39_this_year.csv"))
+```
+
+## Aim 
+
+To provide in-season summaries of juvenile salmon migration characteristics and oceanographic conditions in the northern Strait of Georgia region in British Columbia, Canada. 
+
+## Background
+
+The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015 in a collaborative partnership with UBC, SFU, University of Toronto, Salmon Coast Field Station, Pacific Salmon Foundation, and Fisheries and Oceans Canada. As of 2021, the program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
+
+1) Strait of Georgia – stratified high plankton biomass zone; and 
+
+2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of high wild-farmed fish interactions.
+
+## Program Objectives
+
+1) Determine migration timing and pathways; 
+
+2) Migration habitat mapping - oceanographic conditions along the migration route;
+
+3) Understand the dynamics of the plankton food-webs that underpin juvenile salmon growth and
+health;
+
+4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and
+health.
+
+## Key Parameters Reported
+
+* Catch Statistics
+* Lengths
+* Parasite Presence
+* Oceanographic Conditions
+
+The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance.
+
+We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Julian Gan (Julian.Gan@hakai.org), and/or Brett Johnson (Brett.Johnson@hakai.org). 
+
+The Hakai Institute embraces an "Open Science Policy"; to that end you can review, make suggestions or report issues with the R code written to produce this report by visiting https://github.com/HakaiInstitute/jsp-in-season-reports
+
+See our interactive data explorer for more information https://hecate.hakai.org/shiny/JSP/
+
+![Salmon sampling locations in the Discovery Islands and Johnstone Strait in 2021. The Discovery Islands sites (Inset B) remain unchanged, but Johnstone Strait (Inset A) is not being sampled in 2021.](./figs/map_2021.png)
+
+
+__Report prepared by:__ Julian Gan, Brett Johnson, Krystal Bachen, Tim van der Stap, Nicholas Sinclair, and Brian Hunt
+
+__Updated:__ `r Sys.Date()`  
+
+
+## Migration Timing
+
+```{r, fig.cap="Average number (± 1 SE) of juvenile sockeye salmon caught in each seine in 2021, averaged over one-week periods for each region, and represented by the middle day of each week."}
+
+avg_school_size <- as_tibble(ss_2021) %>% 
+  select(year, sampling_week, so_total) %>%
+  group_by(year, sampling_week) %>% 
+  summarise(mean = mean(so_total, na.rm = T),n = n(), se = sd(so_total) / sqrt(n())) %>% 
+  ungroup() %>% 
+  drop_na(year)
+
+so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_week), y = mean, group=1)) +
+  geom_line(size = 1, colour = "#d12400")+  
+  geom_point(colour = "#d12400", size = 1.75) + 
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2), colour = "#d12400") +
+  xlab("Date") +
+  ylab("Sockeye CPUE") +
+# coord_cartesian(xlim = 1:11) +
+  theme(legend.justification=c(1,0), legend.position=c(.8,.8),
+        legend.background = element_rect(fill=alpha(0.1))) + 
+  theme(legend.text = element_text(colour="black", size = 12)) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  xlab("Date") +
+  ylab("Mean sockeye catch abundance") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+# coord_cartesian(ylim = c(0,500))
+
+so_abund_timing
+```
+
+
+## Fish lengths
+
+```{r github_database_import}
+surveys_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/survey_data.csv") %>% 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
+  left_join(select(sites,
+                   site_id,
+                   region),
+            by = "site_id")
+
+surveys_GH$sampling_week <-
+  recode_factor(
+    surveys_GH$sampling_week,
+    `18` = "May 5",
+    `19` = "May 12" ,
+    `20` = "May 19",
+    `21` = "May 26",
+    `22` = "June 2",
+    `23` = "June 9",
+    `24` = "June 16",
+    `25` = "June 23",
+    `26` = "June 30",
+    `27` = "July 6",
+    `28` = "July 13",
+  )
+
+seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/seine_data.csv") 
+
+fish_field_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/fish_field_data.csv", guess_max=20000)
+fish_lab_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/fish_lab_data.csv", guess_max=20000) %>% 
+  select(ufn, fork_length_lab = fork_length)
+
+fish_GH <- left_join(fish_field_GH, fish_lab_GH) %>% 
+  mutate(fork_length = coalesce(fork_length_field, fork_length_lab))
+
+ss_GH <- left_join(seines_GH, surveys_GH, by = "survey_id")%>% 
+  drop_na(sampling_week)
+
+ss_fish_GH <- left_join(fish_GH, ss_GH)
+```
+
+```{r, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2020."}
+
+annual_di_length_histo <- ss_fish_GH %>% 
+  select(sampling_week, survey_date, region, species, fork_length) %>% 
+  filter(species %in% c("SO", "PI", "CU"), region == "DI",
+         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
+  mutate(year = "2015-2020",
+         fork_length = as.numeric(fork_length)) %>% 
+  drop_na(fork_length)
+
+di_length_histo_2021 <- ss_fish_2021 %>% 
+  select(sampling_week, survey_date, region, species, fork_length = fork_length_field) %>% 
+  filter(species %in% c("SO", "PI", "CU"), region == "DI") %>% 
+  filter(fork_length != "NA") %>% 
+  mutate(year = "2021",
+         fork_length = as.numeric(fork_length))
+
+di_length_histo <- rbind(di_length_histo_2021, annual_di_length_histo)
+
+di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_length, fill = year)) +
+  geom_boxplot()+
+  ylab("Fork Length (mm)")+
+  xlab("Date")+
+  theme(legend.text = element_text(colour="black", size = 12)) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  facet_grid(species~., labeller=labeller(species = spp_labels))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  scale_fill_manual(values = hakaiR::hakai_palette("Darjeeling1"))
+  
+di_length_hist_plot
+```
+
+```{r, fig.cap = "Frequency distribution of the fork lengths of juvenile chum, pink, and sockeye salmon in the Discovery Islands in 2021."}
+
+di_length_freq_dist <- ggplot(mutate(di_length_histo_2021,
+                                     species = recode(species,
+                                                      "CU" = "Chum",
+                                                      "PI" = "Pink",
+                                                      "SO" = "Sockeye")
+                                     ),
+                                     aes(x = fork_length, fill=species)) + 
+  geom_histogram(binwidth = 5, boundary = 0, closed = "left", color = "black", show.legend = FALSE)+
+  scale_x_continuous(name = "Fork length (mm)")+
+  scale_y_continuous(name = "Number of fish", expand = expansion(mult = c(0, 0.05)))+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  facet_wrap(vars(species))+
+  scale_fill_manual(values = c("#346257", "pink", "#d12400"))
+
+di_length_freq_dist
+```
+
+
+\newpage
+
+
+## Parasite Presence
+
+Juvenile chum, pink, and sockeye were visually inspected for sea lice. Inspection was conducted for all life stages (both attached and motile) that could be identified with the unaided eye.
+
+```{r, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the three sampling zones within the Discovery Islands, in 2021."}
+
+fish_lice_2021 <- ss_fish_2021 %>% 
+  filter(field_lice_id_protocol == "presence/absence") %>% 
+  select(ufn, lice_presence, sampling_week, survey_date, region, species, zone) %>% 
+  group_by(sampling_week, species, lice_presence, zone) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(sampling_week, species, zone) %>% 
+  mutate(prop = count/sum(count),
+         lice_presence = recode(lice_presence,
+                                "A" = "Absent",
+                                "P" = "Present"))
+
+  
+fish_lice_field_stacked_plot <- ggplot(fish_lice_2021, aes(x = sampling_week, y = prop, fill = lice_presence))+
+  geom_bar(position = "stack", stat = "identity", colour="black")+
+  theme(legend.text = element_text(colour="black", size = 12)) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  labs(fill = "Sea-louse\noccurrence")+
+  xlab("Sampling week")+
+  ylab("Proportion of fish")+
+  facet_grid(zone~species, labeller=labeller(species = spp_labels, zone = zone_labels))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  scale_fill_manual(values = hakai_palette("hakai_web"))
+
+fish_lice_field_stacked_plot
+```
+
+\newpage
+
+## Oceanography
+
+```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2020, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2021 that are below average and red areas represent above-average temperatures."}
+
+ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
+      geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
+      geom_line(aes(x = yday, y = predicted_mean_temp)) +
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp >= predicted_mean_temp & yday != 39.5), # There's a single above-average data point prior to the below-average section which causes the ribbon to render awkwardly
+                  aes(ymin = predicted_mean_temp, ymax = mean_temp),
+                  fill = "#d73027", size = 1)+
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp <= predicted_mean_temp),
+                  aes(ymin = mean_temp, ymax = predicted_mean_temp),
+                  fill = "#4575b4", size = 1)+
+      geom_smooth(data = average_temps, aes(x = yday, y = mean_temp),
+                  size = 1, colour = 'black', se = T, span = .35) + # span originally = 0.65 for JSP time series, but reduced to .35 given we have additional data this year which provides a smoother fit. span setting is currently arbitray and needs to be determined empirically somehow
+      geom_point(data = qu39_this_year, aes(x = yday, y = mean_temp), size = 0.75) +
+      scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
+                         labels = (c("Feb", "Mar", "Apr", "May", "Jun", 
+                                     "Jul", "Aug"))) +
+      labs(x = "Date", y = "Temperature (°C)") +
+      coord_cartesian(xlim = c(32,213)) +
+  labs(title = "2021 Ocean Temperatures")+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold"))
+
+```
+
+## Highlights
+

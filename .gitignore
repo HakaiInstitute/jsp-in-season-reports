@@ -27,3 +27,4 @@ rsconnect/
 Hakai_Juvenile Salmon_Report_2019-##-##.Rmd
 .httr-oauth
 *.log
+.DS_Store
