@@ -124,7 +124,7 @@ See our interactive data explorer for more information https://hecate.hakai.org/
 ![Salmon sampling locations in the Discovery Islands in 2021. The Johnstone Strait is not being sampled in 2021.](./figs/map_2021.png)
 
 
-__Report prepared by:__ Tim van der Stap, Brett Johnson, Krystal Bachen, Nicholas Sinclair, and Brian Hunt
+__Report prepared by:__ Tim van der Stap, Brett Johnson, Krystal Bachen, Natalie Benoit, Nicholas Sinclair, and Brian Hunt
 
 __Updated:__ `r Sys.Date()`  
 
@@ -160,9 +160,6 @@ so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_wee
 
 so_abund_timing
 ```
-
-
-## Fish lengths
 
 ```{r github_database_import}
 surveys_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/survey_data.csv") %>% 
@@ -202,6 +199,111 @@ ss_GH <- left_join(seines_GH, surveys_GH, by = "survey_id")%>%
 
 ss_fish_GH <- left_join(fish_GH, ss_GH)
 ```
+
+## Catch intensity 
+
+```{r catch_intensity, eval = FALSE}
+catch_intensity <- ss_GH %>%
+  filter(region == "DI") %>%
+  rename("Sockeye" = "so_total", 
+         "Chum" = "cu_total",
+         "Pink" = "pi_total") %>%
+  mutate(year = year(survey_date)) %>%
+  filter(Sockeye > 1) %>%
+  select(year, Sockeye, Pink, Chum) %>%
+  gather(key = species, value = catch, - year) %>%
+  filter(catch > 0)
+  
+catch_intensity <- catch_intensity %>%
+  group_by(year, species) %>%
+  summarize(mean_catch = mean(catch),
+            sd = sd(catch),
+            n = n()) %>%
+  mutate(se = sd / sqrt(n),
+         lower_ci = qt(1 - (0.05 / 2), n - 1) * se,
+         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) %>%
+  ungroup() %>%
+  mutate_if(is.numeric, round, 1) 
+```
+
+## Species proportion 
+
+```{r species_proportion, fig.cap = "Proportion of juvenile salmon caught in the Discovery Islands in the sampling weeks of May 19, May 26 and June 2, from 2015-2021." }
+species_prop_2015_2020 <- ss_GH %>%
+  filter(region == "DI")  %>%
+  filter(sampling_week == c("May 19", "May 26", "June 2")) %>%
+  rename("Sockeye" = "so_total",
+         "Pink" = "pi_total",
+         "Chum" = "cu_total",
+         "Coho" = "co_total", 
+         "Chinook" = "ck_total",
+         "Herring" = "he_total") %>%
+  mutate(year = year(survey_date)) %>%
+  select(year, sampling_week, Sockeye, Pink, Chum, Coho, Chinook, Herring) %>%
+  gather(key = species, value = catch, - year, - sampling_week) %>%
+  filter(catch > 0) %>%
+  drop_na()
+  
+species_catch_2015_2020 <- species_prop_2015_2020 %>%
+  group_by(year, species) %>%
+  summarize(species_catch = sum(catch)) 
+
+total_catch_2015_2020 <- species_catch_2015_2020 %>%
+  group_by(year) %>%
+  summarize(total_caught = sum(species_catch))
+
+species_prop_2015_2020 <- left_join(species_catch_2015_2020, total_catch_2015_2020, by = "year") %>%
+  mutate(prop = species_catch / total_caught * 100) %>%
+  select(year, prop, species) %>%
+  pivot_wider(names_from = species,
+              values_from = prop)
+
+# For 2021, up until sampling week June 2:
+species_prop_2021 <- ss_2021 %>%
+  rename("Sockeye" = "so_total",
+         "Pink" = "pi_total",
+         "Chum" = "cu_total",
+         "Coho" = "co_total", 
+         "Chinook" = "ck_total",
+         "Herring" = "he_total") %>%
+  select(year, sampling_week, Sockeye, Pink, Chum, Coho, Chinook, Herring, total_caught) %>%
+  gather(key = species, value = catch, - year, - sampling_week, - total_caught) %>%
+  filter(catch > 0) %>%
+  drop_na()
+
+species_catch_2021 <- species_prop_2021 %>%
+  group_by(year, species) %>%
+  summarize(species_catch = sum(catch))
+
+total_catch_2021 <- species_catch_2021 %>%
+  group_by(year) %>%
+  summarize(total_caught = sum(species_catch))
+
+species_prop_2021 <- left_join(species_catch_2021, total_catch_2021, by = "year") %>%
+  mutate(prop = species_catch / total_caught * 100) %>%
+  select(year, prop, species) %>%
+  pivot_wider(names_from = species, 
+              values_from = prop)
+
+# Combined proportions from 2015 - 2021, Discovery Islands, sampling weeks: May 19, 26 and June 2.
+species_prop_total <- plyr::rbind.fill(species_prop_2015_2020, species_prop_2021)
+
+# Plotting this in a stacked bar graph: 
+species_prop_total_graph <- species_prop_total %>% 
+  pivot_longer(cols = Chum:Chinook,
+               names_to = "species",
+               values_to = "Proportion") %>%
+  ggplot(aes(x = year, y = Proportion, fill = species)) +
+  geom_bar(position = "stack", stat = "identity") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  scale_fill_manual(values = hakai_palette("hakai_web")) + 
+    theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold"))
+  
+species_prop_total_graph
+```
+
+## Fish lengths
 
 ```{r, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2020."}
 
