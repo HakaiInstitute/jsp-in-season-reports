@@ -228,10 +228,10 @@ catch_intensity <- catch_intensity %>%
 
 ## Species proportion 
 
-```{r species_proportion, fig.cap = "Proportion of juvenile salmon caught in the Discovery Islands in the sampling weeks of May 19, May 26 and June 2, from 2015-2021." }
+```{r species_proportion, fig.cap = "Proportion of juvenile salmon caught in the Discovery Islands in the sampling weeks of May 19, May 26, June 2, and June 9, from 2015-2021." }
 species_prop_2015_2020 <- ss_GH %>%
   filter(region == "DI")  %>%
-  filter(sampling_week == c("May 19", "May 26", "June 2")) %>%
+  filter(sampling_week == c("May 19", "May 26", "June 2", "June ")) %>%
   rename("Sockeye" = "so_total",
          "Pink" = "pi_total",
          "Chum" = "cu_total",
@@ -293,12 +293,15 @@ species_prop_total_graph <- species_prop_total %>%
   pivot_longer(cols = Chum:Chinook,
                names_to = "species",
                values_to = "Proportion") %>%
-  ggplot(aes(x = year, y = Proportion, fill = species)) +
+  ggplot(aes(x = factor(year), y = Proportion, fill = species)) +
   geom_bar(position = "stack", stat = "identity") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   scale_fill_manual(values = hakai_palette("hakai_web")) + 
-    theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=12,face="bold"))
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  theme(legend.text = element_text(colour="black", size = 12)) +
+  xlab("Year") +
+  ylab("Proportion (%)")
   
 species_prop_total_graph
 ```
