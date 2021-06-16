@@ -115,7 +115,7 @@ health.
 
 The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance.
 
-We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Tim van der Stap (Tim.vanderstap@hakai.org), Krystal Bachen (Krystal.Bachen@hakai.org), and/or Brett Johnson (Brett.Johnson@hakai.org). 
+We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Tim van der Stap (Tim.vanderstap@hakai.org), Krystal Bachen (Krystal.Bachen@hakai.org), Natalie Benoit (n.benoit@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
 
 The Hakai Institute embraces an "Open Science Policy"; to that end you can review, make suggestions or report issues with the R code written to produce this report by visiting https://github.com/HakaiInstitute/jsp-in-season-reports
 
