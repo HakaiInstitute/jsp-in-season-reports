@@ -103,8 +103,14 @@ qu39_temp_anomaly_data <-
     station = "QU39",
     yday = (140 + 148) / 2,
     predicted_mean_temp = predict(temp.lo_qu39, (140 + 148) / 2),
-    mean_temp = predict(temp.lo_qu39, (140 + 148) / 2)
-  ) 
+    mean_temp = predict(temp.lo_qu39, (140 + 148) / 2) 
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (166 + 173) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (166 + 173) / 2),
+    mean_temp = predict(temp.lo_qu39, (166 + 173) / 2)
+  )
 
 
 # Create min and max for any given day of the time series

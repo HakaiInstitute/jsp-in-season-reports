@@ -35,16 +35,45 @@ options(scipen=999) # This removes scientific notation for inline output ie `r o
 theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, package hosted on GitHub
 
 field_data_url <- "https://docs.google.com/spreadsheets/d/1IqjeOf2mTZYRhYscct6Ra5fIzp2ruK8E3Y1DxvsZ6V8/edit#gid=00"
-```
 
-```{r import data, include = FALSE}
 sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/sites.csv")
 
-# Use googlesheets4 pkg to load in current google sheets for data entry
+```
+
+```{r github report data import}
+survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/report_data/survey_seines.csv") %>% 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
+  left_join(select(sites,
+                   site_id,
+                   region))
+
+survey_seines_GH$sampling_week <-
+  recode_factor(
+    survey_seines_GH$sampling_week,
+    `18` = "May 5",
+    `19` = "May 12" ,
+    `20` = "May 19",
+    `21` = "May 26",
+    `22` = "June 2",
+    `23` = "June 9",
+    `24` = "June 16",
+    `25` = "June 23",
+    `26` = "June 30",
+    `27` = "July 6",
+    `28` = "July 13",
+  )
+
+```
+
+
+```{r import current year data, include = FALSE}
+# Run first line independently so you can interactively enter authentication data in the console
 
 surveys_2021 <- read_sheet(field_data_url, sheet = "survey_data") %>% 
   drop_na(survey_id) %>% 
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
+
+1
 
 surveys_2021$sampling_week <- recode_factor(surveys_2021$sampling_week, 
                                            `18` = "May 5",
@@ -80,19 +109,21 @@ zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
 temperature_anomaly_data <- read_csv(here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
 average_temps <- read_csv(here("2021_in_season_report", "data", "average_temps.csv"))
 qu39_this_year <- read_csv(here("2021_in_season_report", "data", "qu39_this_year.csv"))
+
+
 ```
 
 ## Aim 
 
-To provide in-season summaries of juvenile salmon migration characteristics and oceanographic conditions in the northern Strait of Georgia region in British Columbia, Canada. 
+To provide a seasonal summary of juvenile salmon migration characteristics and oceanographic conditions in the northern Strait of Georgia region in British Columbia, Canada. 
 
 ## Background
 
-The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015 in a collaborative partnership with UBC, SFU, University of Toronto, Salmon Coast Field Station, Pacific Salmon Foundation, and Fisheries and Oceans Canada. As of 2021, the program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
+The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015 in a collaborative partnership with UBC, SFU, University of Toronto, Salmon Coast Field Station, Pacific Salmon Foundation, and Fisheries and Oceans Canada. As of 2020, the program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
 
 1) Strait of Georgia – stratified high plankton biomass zone; and 
 
-2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of high wild-farmed fish interactions.
+2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of high potential for wild-farmed fish interactions.
 
 ## Program Objectives
 
@@ -115,13 +146,13 @@ health.
 
 The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance.
 
-We are endeavouring to provide useful information for the entire salmon research community. As such we welcome any feedback. Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Tim van der Stap (Tim.vanderstap@hakai.org), Krystal Bachen (Krystal.Bachen@hakai.org), Natalie Benoit (n.benoit@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
+Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Tim van der Stap (Tim.vanderstap@hakai.org), Krystal Bachen (Krystal.Bachen@hakai.org), Natalie Benoit (n.benoit@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
 
-The Hakai Institute embraces an "Open Science Policy"; to that end you can review, make suggestions or report issues with the R code written to produce this report by visiting https://github.com/HakaiInstitute/jsp-in-season-reports
+The Hakai Institute embraces an "Open Science Policy"; to that end you can access the data used in this report at https://github.com/HakaiInstitute/jsp-data.
 
 See our interactive data explorer for more information https://hecate.hakai.org/shiny/JSP/
 
-![Salmon sampling locations in the Discovery Islands in 2021. The Johnstone Strait is not being sampled in 2021.](./figs/map_2021.png)
+![Salmon sampling locations in the Discovery Islands in 2021.](./figs/map_2021.png)
 
 
 __Report prepared by:__ Tim van der Stap, Brett Johnson, Krystal Bachen, Natalie Benoit, Nicholas Sinclair, and Brian Hunt
@@ -131,192 +162,179 @@ __Updated:__ `r Sys.Date()`
 
 ## Migration Timing
 
-```{r, fig.cap="Average number (± 1 SE) of juvenile sockeye salmon caught in each seine in 2021, averaged over one-week periods for each region, and represented by the middle day of each week."}
+```{r rolling mean ts v current, fig.cap = "Sockeye catches (bars) and rolling seven day average (lines) in 2021 compared catches averaged by day across all years"}
+df21 <- select(ss_2021, date = survey_date, so_total) %>% 
+  mutate(group = "2021")
 
-avg_school_size <- as_tibble(ss_2021) %>% 
-  select(year, sampling_week, so_total) %>%
-  group_by(year, sampling_week) %>% 
-  summarise(mean = mean(so_total, na.rm = T),n = n(), se = sd(so_total) / sqrt(n())) %>% 
-  ungroup() %>% 
-  drop_na(year)
+dfall <- select(survey_seines_GH, survey_date, so_total) %>% 
+  group_by(survey_date) %>% 
+  summarize(so_total = mean(so_total)) %>% 
+   mutate(year = 2021,
+         month = month(survey_date),
+         day = day(survey_date),
+         date = as_date(paste(year,month,day,  sep = "-"))) %>% 
+  group_by(date) %>% 
+  summarize(so_total = mean(so_total)) %>% 
+  mutate(group = "2015-2020") %>% 
+  ungroup()
 
-so_abund_timing <- ggplot(data = avg_school_size, aes(x = as_factor(sampling_week), y = mean, group=1)) +
-  geom_line(size = 1, colour = "#d12400")+  
-  geom_point(colour = "#d12400", size = 1.75) + 
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2), colour = "#d12400") +
+ss_all <- bind_rows(df21,dfall)
+
+ss_all %>% 
+  mutate(seven_avg= zoo::rollmean(so_total, 5,
+                             fill=NA)) %>%
+   ggplot(aes(x=date,
+             y=so_total)) +
+  geom_bar(aes(fill = group), alpha = .35, stat = "identity", position=position_dodge())+
+  geom_line(aes(y = seven_avg, group = group, colour = group), 
+            size = .75) +
+  ylab("Sockeye catch") +
   xlab("Date") +
-  ylab("Sockeye CPUE") +
-# coord_cartesian(xlim = 1:11) +
-  theme(legend.justification=c(1,0), legend.position=c(.8,.8),
-        legend.background = element_rect(fill=alpha(0.1))) + 
-  theme(legend.text = element_text(colour="black", size = 12)) +
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=12,face="bold")) +
-  xlab("Date") +
-  ylab("Mean sockeye catch abundance") +
-  theme(legend.title = element_blank()) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
-# coord_cartesian(ylim = c(0,500))
+  theme(legend.title=element_blank()) +
+  theme(legend.justification=c(1,1), legend.position=c(1,1))
 
-so_abund_timing
-```
-
-```{r github_database_import}
-surveys_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/survey_data.csv") %>% 
-  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
-  left_join(select(sites,
-                   site_id,
-                   region),
-            by = "site_id")
-
-surveys_GH$sampling_week <-
-  recode_factor(
-    surveys_GH$sampling_week,
-    `18` = "May 5",
-    `19` = "May 12" ,
-    `20` = "May 19",
-    `21` = "May 26",
-    `22` = "June 2",
-    `23` = "June 9",
-    `24` = "June 16",
-    `25` = "June 23",
-    `26` = "June 30",
-    `27` = "July 6",
-    `28` = "July 13",
-  )
-
-seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/seine_data.csv") 
-
-fish_field_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/fish_field_data.csv", guess_max=20000)
-fish_lab_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/fish_lab_data.csv", guess_max=20000) %>% 
-  select(ufn, fork_length_lab = fork_length)
-
-fish_GH <- left_join(fish_field_GH, fish_lab_GH) %>% 
-  mutate(fork_length = coalesce(fork_length_field, fork_length_lab))
-
-ss_GH <- left_join(seines_GH, surveys_GH, by = "survey_id")%>% 
-  drop_na(sampling_week)
-
-ss_fish_GH <- left_join(fish_GH, ss_GH)
 ```
 
 ## Catch intensity 
 
-```{r catch_intensity, eval = FALSE}
-catch_intensity <- ss_GH %>%
-  filter(region == "DI") %>%
-  rename("Sockeye" = "so_total", 
-         "Chum" = "cu_total",
-         "Pink" = "pi_total") %>%
-  mutate(year = year(survey_date)) %>%
-  filter(Sockeye > 1) %>%
-  select(year, Sockeye, Pink, Chum) %>%
-  gather(key = species, value = catch, - year) %>%
-  filter(catch > 0)
-  
-catch_intensity <- catch_intensity %>%
-  group_by(year, species) %>%
+```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which the species was caught, and error bars indicate 1 standard error."}
+
+catch_intensity_21 <- ss_2021 %>%
+  rename("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total") %>%
+  # remove seines that did not catch any sockeye, even if they caught other spp
+  filter(Sockeye > 0) %>% 
+  select(year, Sockeye, Pink, Chum) %>% 
+  gather(key = species, value = catch, - year) 
+
+# %>% 
+#   # Filter out catches where no pink and chum were caught, so that catch intensity is consistent for each species. Ie. catch intensity for sockeye is the average number of sockeye when catch of sockeye is > 0, catch intensity of pink is the average number of pink caught when > 1 pink was caught, and so on for chum as well.
+#   filter(catch > 0)
+
+catch_intensity_21 <- catch_intensity_21 %>% 
+  group_by(year, species) %>% 
   summarize(mean_catch = mean(catch),
             sd = sd(catch),
-            n = n()) %>%
+            n = n())%>% 
   mutate(se = sd / sqrt(n),
          lower_ci = qt(1 - (0.05 / 2), n - 1) * se,
-         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) %>%
-  ungroup() %>%
-  mutate_if(is.numeric, round, 1) 
+         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, round, 1)
+
+
+# Time series catch intensity
+catch_intensity <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/report_data/catch_intensity.csv")
+
+catch_intensity <- bind_rows(catch_intensity, catch_intensity_21)
+
+catch_intensity$species <- catch_intensity$species %>%
+  fct_relevel("Sockeye", "Pink", "Chum")
+
+(ggplot(catch_intensity, aes(x = factor(year), y = mean_catch, fill = species)) +
+  geom_bar(colour = "black",  stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin = mean_catch - se, ymax = mean_catch + se),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  geom_text(aes(y = 0.0, label = paste0(n)), size = 3.15, vjust = 1.25,
+                position = position_dodge(0.9)) +
+  xlab("Year") +
+  ylab("Catch Intensity") +
+  labs(fill = "Species") +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon")))
 ```
 
 ## Species proportion 
 
 ```{r species_proportion, fig.cap = "Proportion of juvenile salmon caught in the Discovery Islands in the sampling weeks of May 19, May 26, June 2, and June 9, from 2015-2021." }
-species_prop_2015_2020 <- ss_GH %>%
-  filter(region == "DI")  %>%
-  filter(sampling_week == c("May 19", "May 26", "June 2", "June ")) %>%
-  rename("Sockeye" = "so_total",
-         "Pink" = "pi_total",
-         "Chum" = "cu_total",
-         "Coho" = "co_total", 
-         "Chinook" = "ck_total",
-         "Herring" = "he_total") %>%
-  mutate(year = year(survey_date)) %>%
-  select(year, sampling_week, Sockeye, Pink, Chum, Coho, Chinook, Herring) %>%
-  gather(key = species, value = catch, - year, - sampling_week) %>%
-  filter(catch > 0) %>%
-  drop_na()
-  
-species_catch_2015_2020 <- species_prop_2015_2020 %>%
-  group_by(year, species) %>%
-  summarize(species_catch = sum(catch)) 
 
-total_catch_2015_2020 <- species_catch_2015_2020 %>%
-  group_by(year) %>%
-  summarize(total_caught = sum(species_catch))
-
-species_prop_2015_2020 <- left_join(species_catch_2015_2020, total_catch_2015_2020, by = "year") %>%
-  mutate(prop = species_catch / total_caught * 100) %>%
-  select(year, prop, species) %>%
-  pivot_wider(names_from = species,
-              values_from = prop)
+species_prop_2015_2020 <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/report_data/proportion.csv")
 
 # For 2021, up until sampling week June 2:
 species_prop_2021 <- ss_2021 %>%
-  rename("Sockeye" = "so_total",
-         "Pink" = "pi_total",
-         "Chum" = "cu_total",
-         "Coho" = "co_total", 
-         "Chinook" = "ck_total",
-         "Herring" = "he_total") %>%
-  select(year, sampling_week, Sockeye, Pink, Chum, Coho, Chinook, Herring, total_caught) %>%
-  gather(key = species, value = catch, - year, - sampling_week, - total_caught) %>%
-  filter(catch > 0) %>%
+ select(
+    survey_date,
+    seine_id,
+    so_total,
+    pi_total,
+    cu_total,
+    co_total,
+    he_total
+  ) %>%
+  # Next I remove instances when no sockeye were caught. I'm doing this because in 2015 and 2016 we only enumerated catches in which we caught sockeye, whereas in 2017 and 2018 we enumerated all seines. So to reduce the bias introduced from the field method i filter the comparison down to where field methods are comparable
+  filter(so_total > 0) %>%
+  # remove instances when not all species were enumerated by droping rows with NA
+  drop_na() %>%
+  mutate(year = year(survey_date)) %>%
+  gather(
+    `so_total`,
+    `pi_total`,
+    `cu_total`,
+    `co_total`,
+    `he_total`,
+    key = "species",
+    value = "n"
+  ) %>%
   drop_na()
 
-species_catch_2021 <- species_prop_2021 %>%
+spp_prop_expanded <-
+  species_prop_2021[rep(row.names(species_prop_2021), species_prop_2021$n), 1:5] %>%
+  mutate(yday = yday(survey_date), year = year(survey_date))
+
+species_prop_2021 <- spp_prop_expanded %>%
   group_by(year, species) %>%
-  summarize(species_catch = sum(catch))
-
-total_catch_2021 <- species_catch_2021 %>%
-  group_by(year) %>%
-  summarize(total_caught = sum(species_catch))
-
-species_prop_2021 <- left_join(species_catch_2021, total_catch_2021, by = "year") %>%
-  mutate(prop = species_catch / total_caught * 100) %>%
-  select(year, prop, species) %>%
-  pivot_wider(names_from = species, 
-              values_from = prop)
+  summarize(n = n()) %>%
+  mutate(proportion = n / sum(n)) %>%
+  ungroup()
 
 # Combined proportions from 2015 - 2021, Discovery Islands, sampling weeks: May 19, 26 and June 2.
-species_prop_total <- plyr::rbind.fill(species_prop_2015_2020, species_prop_2021)
+species_prop_total <- bind_rows(species_prop_2015_2020, species_prop_2021)
+
+species_prop_total$species <- species_prop_total$species %>% 
+  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total") %>% 
+  fct_recode("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total", "Coho" = "co_total",
+             "Herring" = "he_total")
 
 # Plotting this in a stacked bar graph: 
-species_prop_total_graph <- species_prop_total %>% 
-  pivot_longer(cols = Chum:Chinook,
-               names_to = "species",
-               values_to = "Proportion") %>%
-  ggplot(aes(x = factor(year), y = Proportion, fill = species)) +
-  geom_bar(position = "stack", stat = "identity") +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  scale_fill_manual(values = hakai_palette("hakai_web")) + 
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=12,face="bold")) +
-  theme(legend.text = element_text(colour="black", size = 12)) +
-  xlab("Year") +
-  ylab("Proportion (%)")
+species_prop_total_graph <-  
+  ggplot(data = species_prop_total, aes(x = year, y = proportion, fill = species)) +
+      geom_bar(colour = "black", stat="identity", position = 'stack') +
+      xlab("Year") +
+      ylab("Proportion") +
+      scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+      labs(fill = "Species") 
   
 species_prop_total_graph
 ```
 
 ## Fish lengths
 
-```{r, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2020."}
+```{r fish lengths, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2020."}
 
-annual_di_length_histo <- ss_fish_GH %>% 
+length_histo <-
+  read_csv(
+    "https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/report_data/length_histo.csv"
+  ) %>%
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
+
+length_histo$sampling_week <- recode_factor(length_histo$sampling_week, 
+                                           `18` = "May 5",
+                                           `19` = "May 12" ,
+                                           `20` = "May 19", 
+                                           `21` = "May 26",
+                                           `22` = "June 2",
+                                           `23` = "June 9", 
+                                           `24` = "June 16", 
+                                           `25` = "June 23",
+                                           `26` = "June 30", 
+                                           `27` = "July 6", 
+                                           `28` = "July 13")
+  
+annual_di_length_histo <- length_histo %>% 
   select(sampling_week, survey_date, region, species, fork_length) %>% 
-  filter(species %in% c("SO", "PI", "CU"), region == "DI",
+  filter(species %in% c("SO", "PI", "CU"),
          sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
   mutate(year = "2015-2020",
-         fork_length = as.numeric(fork_length)) %>% 
-  drop_na(fork_length)
+         fork_length = as.numeric(fork_length))
 
 di_length_histo_2021 <- ss_fish_2021 %>% 
   select(sampling_week, survey_date, region, species, fork_length = fork_length_field) %>% 
@@ -325,7 +343,7 @@ di_length_histo_2021 <- ss_fish_2021 %>%
   mutate(year = "2021",
          fork_length = as.numeric(fork_length))
 
-di_length_histo <- rbind(di_length_histo_2021, annual_di_length_histo)
+di_length_histo <- bind_rows(di_length_histo_2021, annual_di_length_histo)
 
 di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_length, fill = year)) +
   geom_boxplot()+
@@ -341,27 +359,6 @@ di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_l
 di_length_hist_plot
 ```
 
-```{r, fig.cap = "Frequency distribution of the fork lengths of juvenile chum, pink, and sockeye salmon in the Discovery Islands in 2021."}
-
-di_length_freq_dist <- ggplot(mutate(di_length_histo_2021,
-                                     species = recode(species,
-                                                      "CU" = "Chum",
-                                                      "PI" = "Pink",
-                                                      "SO" = "Sockeye")
-                                     ),
-                                     aes(x = fork_length, fill=species)) + 
-  geom_histogram(binwidth = 5, boundary = 0, closed = "left", color = "black", show.legend = FALSE)+
-  scale_x_continuous(name = "Fork length (mm)")+
-  scale_y_continuous(name = "Number of fish", expand = expansion(mult = c(0, 0.05)))+
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=12,face="bold")) +
-  facet_wrap(vars(species))+
-  scale_fill_manual(values = c("#346257", "pink", "#d12400"))
-
-di_length_freq_dist
-```
-
-
 \newpage
 
 
@@ -369,35 +366,44 @@ di_length_freq_dist
 
 Juvenile chum, pink, and sockeye were visually inspected for sea lice. Presence of sea lice was reported only for the adult, motile stage, that could be identified with the unaided eye.
 
-```{r, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the three sampling zones within the Discovery Islands, in 2021."}
-# We also included sea lice presence/absence for Herring, remove this:
-fish_lice_2021 <- ss_fish_2021 %>% 
-  filter(field_lice_id_protocol == "presence/absence") %>% 
-  filter(species != "HE") %>%
-  select(ufn, lice_presence, sampling_week, survey_date, region, species, zone) %>% 
-  group_by(sampling_week, species, lice_presence, zone) %>% 
+```{r interannual lice comparison, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the three sampling zones within the Discovery Islands, in 2021."}
+
+ssf_lice <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/survey_seines_fish.csv", guess_max = 16000) %>% 
+  select(survey_date, site_id, species, lice_presence_absence) %>% 
+  drop_na(lice_presence_absence)
+
+ssf_lice21 <- ss_fish_2021 %>% 
+  select(survey_date, site_id, species, lice_presence_absence = lice_presence) %>% 
+  filter(species != "HE")
+
+ssf_lice_all <- bind_rows(ssf_lice, ssf_lice21) %>% 
+  filter(lice_presence_absence != "NA") %>% 
+  mutate(year = year(survey_date)) %>% 
+  group_by(year, species, lice_presence_absence) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
-  group_by(sampling_week, species, zone) %>% 
-  mutate(prop = count/sum(count),
-         lice_presence = recode(lice_presence,
+  group_by(year, species) %>% 
+  mutate(prop = count / sum(count),
+         lice_presence = recode(lice_presence_absence,
                                 "A" = "Absent",
                                 "P" = "Present"))
-
-fish_lice_field_stacked_plot <- ggplot(fish_lice_2021, aes(x = sampling_week, y = prop, fill = lice_presence))+
+  
+fish_lice_field_stacked_plot <- ggplot(ssf_lice_all, aes(x = factor(year), y = prop, fill = lice_presence))+
   geom_bar(position = "stack", stat = "identity", colour="black")+
   theme(legend.text = element_text(colour="black", size = 12)) + 
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
   labs(fill = "Sea-louse\noccurrence")+
-  xlab("Sampling week")+
+  xlab("Year")+
   ylab("Proportion of fish")+
-  facet_grid(zone~species, labeller=labeller(species = spp_labels, zone = zone_labels))+
+  facet_grid(.~species, labeller=labeller(species = spp_labels))+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
   scale_fill_manual(values = hakai_palette("hakai_web"))
 
 fish_lice_field_stacked_plot
+
 ```
+
 
 \newpage
 
@@ -431,22 +437,3 @@ ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
 ```
 
 ## Highlights
-
-* The first sockeye recorded in the Discovery Islands was May 25th -- several days later than in all previous sampling years. 
-* The majority of sockeye caught were infected with at least one sea-louse. Additionally, numerous juvenile, attached sea-lice were observed on the sockeye.
-* Spring ocean temperatures are colder than the average over the past five years, but warmer during the month of June. 
-
-```{r, include=FALSE}
-surveys_sites_2021 <- left_join(surveys_2021, 
-                                select(sites,
-                                       site_id, region),
-                                by = "site_id")
-
-ggplot(surveys_sites_2021, aes(x = yday(survey_date), y = region)) + 
-  geom_point() +
-  geom_vline(xintercept = 141, colour = "red") +
-  geom_vline(xintercept = 154, colour = "red") + 
-  geom_vline(xintercept = 146, colour = "blue") +
-  geom_vline(xintercept = 159, colour = "blue") 
-
-```
