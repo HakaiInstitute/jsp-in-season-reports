@@ -67,8 +67,9 @@ write_csv(qu39_this_year, here::here("2021_in_season_report", "data", "qu39_this
 
 ## SST ANOMALY DATA
 
+# The span parameter has to match that listed in geom_smooth in ggplot
 temp.lo_qu39 <-
-  loess(mean_temp ~ yday, qu39_average, SE = T, span = 0.35)
+  loess(mean_temp ~ yday, qu39_average, SE = T, span = 0.65)
 
 #create table for predicitions from loess function
 sim_temp_data_qu39 <-
@@ -86,18 +87,24 @@ sim_temp_data_qu39$predicted_mean_temp <-
 qu39_temp_anomaly_data <-
   left_join(sim_temp_data_qu39, qu39_this_year) %>%
   mutate(diff = if_else(mean_temp > predicted_mean_temp, "pos", "neg")) %>%
-  drop_na(diff) %>% #  Run code up to here to identify intersections and then add rows
+  drop_na(diff) %>% #  Run code up to here to identify intersections (where diff goes from pos to neg or neg to pos and then add rows at the mid point between those two days with a vlaue that matches the trend
   add_row(
     station = "QU39",
-    yday = (39 + 41) / 2,
-    predicted_mean_temp = predict(temp.lo_qu39, (39 + 41) / 2),
-    mean_temp = predict(temp.lo_qu39, (39 + 41) / 2)
+    yday = (35 + 39) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (35 + 39) / 2),
+    mean_temp = predict(temp.lo_qu39, (35 + 39) / 2)
   ) %>%
   add_row(
     station = "QU39",
-    yday = 52,
-    predicted_mean_temp = predict(temp.lo_qu39, 52),
-    mean_temp = predict(temp.lo_qu39, 52)
+    yday = 40,
+    predicted_mean_temp = predict(temp.lo_qu39, 40),
+    mean_temp = predict(temp.lo_qu39, 40)
+  ) %>%
+  add_row(
+    station = "QU39",
+    yday = (41 + 50) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (41 + 50) / 2),
+    mean_temp = predict(temp.lo_qu39, (41 + 50) / 2)
   ) %>%
   add_row(
     station = "QU39",

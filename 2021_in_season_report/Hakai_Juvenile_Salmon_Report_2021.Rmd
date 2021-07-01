@@ -1,5 +1,5 @@
 ---
-title: Juvenile salmon migration report; northern Strait of Georgia
+title: Juvenile salmon migration report; Discovery Islands
 output:
   rmarkdown::pdf_document:
     fig_caption: yes
@@ -20,6 +20,7 @@ header-includes:
 — Hakai Institute Juvenile Salmon Program 2021 —
 \end{center}
 
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE)
 library(tidyverse)
@@ -37,6 +38,14 @@ theme_set(ggsidekick::theme_sleek(base_size = 17)) #Thanks Sean Anderson, packag
 field_data_url <- "https://docs.google.com/spreadsheets/d/1IqjeOf2mTZYRhYscct6Ra5fIzp2ruK8E3Y1DxvsZ6V8/edit#gid=00"
 
 sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/sites.csv")
+
+spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
+zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
+
+# Run ctd_data_import_and_wrangle_2021.R 
+temperature_anomaly_data <- read_csv(here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
+average_temps <- read_csv(here("2021_in_season_report", "data", "average_temps.csv"))
+qu39_this_year <- read_csv(here("2021_in_season_report", "data", "qu39_this_year.csv"))
 
 ```
 
@@ -102,67 +111,47 @@ fish_field_2021 <- read_sheet(field_data_url, sheet = "fish_field_data") %>%
 
 ss_fish_2021 <- left_join(fish_field_2021, ss_2021)
 
-spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
-zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
-
-# Run ctd_data_import_and_wrangle_2021.R 
-temperature_anomaly_data <- read_csv(here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
-average_temps <- read_csv(here("2021_in_season_report", "data", "average_temps.csv"))
-qu39_this_year <- read_csv(here("2021_in_season_report", "data", "qu39_this_year.csv"))
-
-
 ```
 
 ## Aim 
 
-To provide a seasonal summary of juvenile salmon migration characteristics and oceanographic conditions in the northern Strait of Georgia region in British Columbia, Canada. 
+To provide a seasonal summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
 
 ## Background
 
-The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015 in a collaborative partnership with UBC, SFU, University of Toronto, Salmon Coast Field Station, Pacific Salmon Foundation, and Fisheries and Oceans Canada. As of 2020, the program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
+The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. The program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
 
 1) Strait of Georgia – stratified high plankton biomass zone; and 
 
-2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of high potential for wild-farmed fish interactions.
+2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of, historically, high potential for wild-farmed fish interactions.
 
 ## Program Objectives
 
-1) Determine migration timing and pathways; 
+1) Determine migration timing and relative abundance; 
 
-2) Migration habitat mapping - oceanographic conditions along the migration route;
+2) Map migration habitat - oceanographic conditions along the migration route;
 
-3) Understand the dynamics of the plankton food-webs that underpin juvenile salmon growth and
-health;
+3) Understand the dynamics of the plankton food-webs that underpin juvenile salmon growth and health;
 
-4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and
-health.
+4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and health.
 
 ## Key Parameters Reported
 
-* Catch Statistics
+* Catch Statistics and Migration Timing
 * Lengths
 * Parasite Presence
-* Oceanographic Conditions
+* Ocean Temperatures
 
 The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance.
 
-Please direct questions or comments to Brian Hunt (B.Hunt@oceans.ubc.ca), Tim van der Stap (Tim.vanderstap@hakai.org), Krystal Bachen (Krystal.Bachen@hakai.org), Natalie Benoit (n.benoit@oceans.ubc.ca) and/or Brett Johnson (Brett.Johnson@hakai.org). 
-
-The Hakai Institute embraces an "Open Science Policy"; to that end you can access the data used in this report at https://github.com/HakaiInstitute/jsp-data.
-
-See our interactive data explorer for more information https://hecate.hakai.org/shiny/JSP/
+The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
 
 ![Salmon sampling locations in the Discovery Islands in 2021.](./figs/map_2021.png)
 
 
-__Report prepared by:__ Tim van der Stap, Brett Johnson, Krystal Bachen, Natalie Benoit, Nicholas Sinclair, and Brian Hunt
-
-__Updated:__ `r Sys.Date()`  
-
-
 ## Migration Timing
 
-```{r rolling mean ts v current, fig.cap = "Sockeye catches (bars) and rolling seven day average (lines) in 2021 compared catches averaged by day across all years"}
+```{r rolling mean ts v current, fig.cap = "Sockeye catches (bars) and rolling seven day averages (lines) in 2021 compared catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2020."}
 df21 <- select(ss_2021, date = survey_date, so_total) %>% 
   mutate(group = "2021")
 
@@ -191,11 +180,12 @@ ss_all %>%
   ylab("Sockeye catch") +
   xlab("Date") +
   theme(legend.title=element_blank()) +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))
+  theme(legend.justification=c(1,1), legend.position=c(1,1)) 
+  
 
 ```
 
-## Catch intensity 
+## Catch Intensity 
 
 ```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which the species was caught, and error bars indicate 1 standard error."}
 
@@ -243,9 +233,9 @@ catch_intensity$species <- catch_intensity$species %>%
   scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon")))
 ```
 
-## Species proportion 
+## Species Proportion 
 
-```{r species_proportion, fig.cap = "Proportion of juvenile salmon caught in the Discovery Islands in the sampling weeks of May 19, May 26, June 2, and June 9, from 2015-2021." }
+```{r species_proportion, fig.cap = "Proportion of juvenile salmon species caught in the Discovery Islands from 2015-2021." }
 
 species_prop_2015_2020 <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/report_data/proportion.csv")
 
@@ -362,11 +352,11 @@ di_length_hist_plot
 \newpage
 
 
-## Parasite Presence
+## Parasite Prevalence
 
-Juvenile chum, pink, and sockeye were visually inspected for sea lice. Presence of sea lice was reported only for the adult, motile stage, that could be identified with the unaided eye.
+Presence or absence of sea lice parasites was determined with the un-aided eye in the field in 2020 and 2021 and prevalence is compared between these two years for this report. Comparison with the entire time series will only be possible after laboratory analysis.
 
-```{r interannual lice comparison, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the three sampling zones within the Discovery Islands, in 2021."}
+```{r interannual lice comparison, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the Discovery Islands in 2021."}
 
 ssf_lice <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/survey_seines_fish.csv", guess_max = 16000) %>% 
   select(survey_date, site_id, species, lice_presence_absence) %>% 
@@ -393,7 +383,6 @@ fish_lice_field_stacked_plot <- ggplot(ssf_lice_all, aes(x = factor(year), y = p
   theme(legend.text = element_text(colour="black", size = 12)) + 
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold")) +
-  labs(fill = "Sea-louse\noccurrence")+
   xlab("Year")+
   ylab("Proportion of fish")+
   facet_grid(.~species, labeller=labeller(species = spp_labels))+
@@ -407,33 +396,37 @@ fish_lice_field_stacked_plot
 
 \newpage
 
-## Oceanography
+## Ocean Temperatures
 
 ```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2020, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2021 that are below average and red areas represent above-average temperatures."}
 
-ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
+plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
       geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
-      geom_line(aes(x = yday, y = predicted_mean_temp)) +
+     #geom_line(aes(x = yday, y = predicted_mean_temp)) +
       geom_ribbon(data = subset(temperature_anomaly_data,
-                                mean_temp >= predicted_mean_temp & yday != 39.5), # There's a single above-average data point prior to the below-average section which causes the ribbon to render awkwardly
+                                mean_temp >= predicted_mean_temp & yday != 39.5),
                   aes(ymin = predicted_mean_temp, ymax = mean_temp),
-                  fill = "#d73027", size = 1)+
+                  fill = "#d73027", size = 1) +
       geom_ribbon(data = subset(temperature_anomaly_data,
                                 mean_temp <= predicted_mean_temp),
                   aes(ymin = mean_temp, ymax = predicted_mean_temp),
                   fill = "#4575b4", size = 1)+
       geom_smooth(data = average_temps, aes(x = yday, y = mean_temp),
-                  size = 1, colour = 'black', se = T, span = .35) + # span originally = 0.65 for JSP time series, but reduced to .35 given we have additional data this year which provides a smoother fit. span setting is currently arbitray and needs to be determined empirically somehow
+                  size = 1, colour = 'black', se = T, span = .65) + 
       geom_point(data = qu39_this_year, aes(x = yday, y = mean_temp), size = 0.75) +
       scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
                          labels = (c("Feb", "Mar", "Apr", "May", "Jun", 
                                      "Jul", "Aug"))) +
       labs(x = "Date", y = "Temperature (°C)") +
-      coord_cartesian(xlim = c(32,213)) +
   labs(title = "2021 Ocean Temperatures")+
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=12,face="bold"))
 
+plot
 ```
 
 ## Highlights
+
+* Sockeye migration timing was up to a week later than in previous years
+* Sockeye catch abundance is low compared to all other years
+* Sea lice prevalence is lower on all species of salmon observed in this year compared to 2020
