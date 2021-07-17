@@ -40,7 +40,6 @@ field_data_url <- "https://docs.google.com/spreadsheets/d/1IqjeOf2mTZYRhYscct6Ra
 sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/tidy_data/sites.csv")
 
 spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
-zone_labels <- c(C = "Central", E = "Eastern", W = "Western")
 
 # Run ctd_data_import_and_wrangle_2021.R 
 temperature_anomaly_data <- read_csv(here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
@@ -364,7 +363,7 @@ ssf_lice <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/
 
 ssf_lice21 <- ss_fish_2021 %>% 
   select(survey_date, site_id, species, lice_presence_absence = lice_presence) %>% 
-  filter(species != "HE")
+  filter(species %in% c("SO", "CU", "PI"))
 
 ssf_lice_all <- bind_rows(ssf_lice, ssf_lice21) %>% 
   filter(lice_presence_absence != "NA") %>% 
@@ -387,7 +386,8 @@ fish_lice_field_stacked_plot <- ggplot(ssf_lice_all, aes(x = factor(year), y = p
   ylab("Proportion of fish")+
   facet_grid(.~species, labeller=labeller(species = spp_labels))+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
-  scale_fill_manual(values = hakai_palette("hakai_web"))
+  scale_fill_manual(values = hakai_palette("hakai_web")) +
+  guides (fill = guide_legend (title = NULL))
 
 fish_lice_field_stacked_plot
 
