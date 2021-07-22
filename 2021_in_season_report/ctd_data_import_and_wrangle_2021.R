@@ -117,8 +117,25 @@ qu39_temp_anomaly_data <-
     yday = (166 + 173) / 2,
     predicted_mean_temp = predict(temp.lo_qu39, (166 + 173) / 2),
     mean_temp = predict(temp.lo_qu39, (166 + 173) / 2)
-  )
-
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (173 + 179) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (173 + 179) / 2),
+    mean_temp = predict(temp.lo_qu39, (173 + 179) / 2)
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (179 + 187) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (179 + 187) / 2),
+    mean_temp = predict(temp.lo_qu39, (179 + 187) / 2)
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (194 + 201) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (194  + 201) / 2),
+    mean_temp = predict(temp.lo_qu39, (194 + 201) / 2)
+  ) 
 
 # Create min and max for any given day of the time series
 qu39_min_max <- qu39_all %>%

@@ -75,7 +75,7 @@ survey_seines_GH$sampling_week <-
 
 
 ```{r import current year data, include = FALSE}
-# Run first line independently so you can interactively enter authentication data in the console
+# Run first line independently so you can interactively enter authentication url in the console
 
 surveys_2021 <- read_sheet(field_data_url, sheet = "survey_data") %>% 
   drop_na(survey_id) %>% 
@@ -321,7 +321,7 @@ length_histo$sampling_week <- recode_factor(length_histo$sampling_week,
 annual_di_length_histo <- length_histo %>% 
   select(sampling_week, survey_date, region, species, fork_length) %>% 
   filter(species %in% c("SO", "PI", "CU"),
-         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30")) %>% 
+         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30", "July 6")) %>% 
   mutate(year = "2015-2020",
          fork_length = as.numeric(fork_length))
 
@@ -427,6 +427,6 @@ plot
 
 ## Highlights
 
-* Sockeye migration timing was up to a week later than in previous years
+* Peak sockeye migration timing was up to two weeks later than in previous years
 * Sockeye catch abundance is low compared to all other years
 * Sea lice prevalence is lower on all species of salmon observed in this year compared to 2020
