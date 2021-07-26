@@ -110,15 +110,17 @@ fish_field_2021 <- read_sheet(field_data_url, sheet = "fish_field_data") %>%
 
 ss_fish_2021 <- left_join(fish_field_2021, ss_2021)
 
+n_seasons <- max(year(ss_2021$survey_date) - 2015) + 1
+
 ```
 
 ## Aim 
 
-To provide a seasonal summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
+To provide a rapid interim summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
 
 ## Background
 
-The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. The program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
+The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. For a complete background including methods see [Hunt et al. 2018](https://npafc.org/wp-content/uploads/Public-Documents/2018/1788Canada.pdf). The program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
 
 1) Strait of Georgia – stratified high plankton biomass zone; and 
 
@@ -141,16 +143,14 @@ The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. 
 * Parasite Presence
 * Ocean Temperatures
 
-The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance.
+The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance. The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
 
-The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
-
-![Salmon sampling locations in the Discovery Islands in 2021.](./figs/map_2021.png)
+![Salmon seining and oceanographic sampling locations in the Discovery Islands in 2021.](./figs/map_2021.png)
 
 
 ## Migration Timing
 
-```{r rolling mean ts v current, fig.cap = "Sockeye catches (bars) and rolling seven day averages (lines) in 2021 compared catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2020."}
+```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2021 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2020."}
 df21 <- select(ss_2021, date = survey_date, so_total) %>% 
   mutate(group = "2021")
 
@@ -290,14 +290,16 @@ species_prop_total_graph <-
       xlab("Year") +
       ylab("Proportion") +
       scale_fill_manual(values = hakai_palette("hakai_salmon")) +
-      labs(fill = "Species") 
+      labs(fill = "Species") +
+      scale_x_continuous(n.breaks = n_seasons)
+  
   
 species_prop_total_graph
 ```
 
 ## Fish lengths
 
-```{r fish lengths, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to the average length from 2015-2020."}
+```{r fish lengths, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2021 grouped by week, and represented by the middle day of each week, compared to all lengths from 2015-2020."}
 
 length_histo <-
   read_csv(
@@ -428,5 +430,9 @@ plot
 ## Highlights
 
 * Peak sockeye migration timing was up to two weeks later than in previous years
-* Sockeye catch abundance is low compared to all other years
-* Sea lice prevalence is lower on all species of salmon observed in this year compared to 2020
+* Sockeye catch abundance was low compared to all other years
+* Sea lice prevalence was lower on all species of salmon observed in this year compared to 2020
+
+## References
+
+Hunt, B.P.V., B.T. Johnson, S.C. Godwin, M. Krkosek, E.A. Pakhomov, and L. Rogers. 2018. The Hakai Institute Juvenile Salmon Program: early life history of sockeye, pink and chum salmon in British Columbia, Canada. NPAFC Doc. 1788. 14 pp. Institute for the Oceans and Fisheries and Department of Earth, Ocean and Atmospheric Sciences, University of British Columbia, Hakai Institute, Earth to Ocean Research Group, Simon Fraser University, Department of Ecology and Evolutionary Biology, University of Toronto, and Salmon Coast Field Station (Available at http://www.npafc.org).
