@@ -41,15 +41,11 @@ sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/mas
 spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
 
 # Run ctd_data_import_and_wrangle_2022.R 
-client <- hakaiApi::Client$new()
-source(here("2022_in_season_report", "ctd_data_import_and_wrangle_2022.R"))
+#source(here("2022_in_season_report", "ctd_data_import_and_wrangle_2022.R"))
 temperature_anomaly_data <- read_csv(here("2022_in_season_report", "data", "temperature_anomaly_data.csv"))
 average_temps <- read_csv(here("2022_in_season_report", "data", "average_temps.csv"))
 qu39_this_year <- read_csv(here("2022_in_season_report", "data", "qu39_this_year.csv"))
 
-```
-
-```{r github report data import}
 survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/survey_seines.csv") %>% 
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
   left_join(select(sites,
@@ -72,10 +68,6 @@ survey_seines_GH$sampling_week <-
     `28` = "July 13",
   )
 
-```
-
-
-```{r import current year data, include = FALSE}
 # Run first line independently so you can interactively enter authentication url in the console
 
 surveys_2022 <- read_sheet(field_data_url, sheet = "survey_data") %>% 
@@ -151,7 +143,7 @@ The following plots are subject to change as the underlying data are preliminary
 
 ## Migration Timing
 
-```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2022 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2021."}
+```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2022 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2021.", include = FALSE}
 df22 <- select(ss_2022, date = survey_date, so_total) %>% 
   mutate(group = "2022")
 
@@ -355,13 +347,46 @@ di_length_hist_plot
 \newpage
 
 
-## Parasite Abundance
+## Parasite Loads
+
+### Definitions[^1] 
+
+_Abundance_: The total number of individuals of a particular parasite species in a sample of hosts ÷ Total number of individuals of the host species in the sample.
+
+_Prevalence_: Number of individuals of a host species infected with a particular parasite species ÷ Number of hosts examined. 
+
+_Intensity_: Total number of individuals
+of a particular parasite species
+in a sample of a host species ÷ Number
+of infected individuals of the host
+species in the sample (= Mean number
+of individuals of a particular parasite
+species per infected host in a sample). 
+
+[^1]: Margolis, L., Esch, G.W., Holmes, J.C., Kuris, A.M. and Schad, G.A. (1982). The use of ecological terms in parasitology: report of an ad hoc committee of the American Society of Parasitologists. J. Parasitol. 68:131–133.
 
 
-```{r interannual lice comparison, fig.cap= "The proportion of juvenile chum, pink, and sockeye infected with at least one sea-louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_, in the Discovery Islands in 2022."}
+```{r wrangle attached stage data, include = FALSE}
 
-catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv")
+# In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
 
+catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") %>% left_join(sites, by = "site_id") %>% 
+  filter(region == "DI")
+
+# QC and sample sizes
+field_samples <- catch_data %>% 
+  select(survey_date, species, all_lice, lice_id_protocol_field, region) %>%
+  filter(lice_id_protocol_field == "salmoncoast_allstages") %>%
+  count(species, year(survey_date), lice_id_protocol_field) 
+  
+lab_samples <- catch_data %>% select(survey_date, species, all_lice, lice_id_protocol_lab) %>% 
+  filter(lice_id_protocol_lab == "lportner_fine") %>% count(species, year(survey_date), lice_id_protocol_lab)
+
+samples <- full_join(field_samples, lab_samples, by = c("species", "year(survey_date)")) %>% 
+  ungroup() %>% 
+  mutate(n = n.x + n.y)
+
+## compare 2022 vs timeseries
 
 current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
   mutate(all_lice = cal_cope + lep_cope + chal_a_b+ cm+
@@ -370,25 +395,171 @@ current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") %>%
   select(survey_date, species, all_lice) %>% 
   drop_na()
 
+current_lice_samples <- current_lice %>% 
+  count(species)
+
 #import time series attached stage lice
 ts_lice <- catch_data %>% 
-  select(survey_date, species, all_lice, lice_collection_protocol, lice_id_protocol_field, lice_id_protocol_lab) %>% 
+  select(seine_id, survey_date, species, all_lice, lice_collection_protocol, lice_id_protocol_field, lice_id_protocol_lab) %>% 
   filter(lice_id_protocol_field == "salmoncoast_allstages" | lice_id_protocol_lab == "lportner_fine") %>% 
-  select(survey_date, species, all_lice) 
+  select(seine_id, survey_date, species, all_lice, lice_id_protocol_lab, lice_id_protocol_field) 
 
 ts_lice <- bind_rows(ts_lice, current_lice)
 ts_lice$year <- year(ts_lice$survey_date)
 
+ts_lice <- ts_lice %>% 
+  filter(species == "CU")
+```
+
+### Attached and Motile Stage Sea Lice Abundance
+ 
+```{r abundance plot, fig.cap = "The abundance  ± SE of attached and motile _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice combined infecting juvenile chum salmon in the Discovery Islands in 2022."}
+
 abundance <- ts_lice %>% 
-  group_by(year, species) %>% 
+  group_by(year) %>% 
   summarize(mean = mean(all_lice),
-            sd = sd(all_lice),
-            n = n()) %>% 
+            n = n(),
+            se = sd(all_lice)/sqrt(n)) %>% 
+  mutate(label = paste0(year,'\nN = ',n)) %>% 
   ungroup()
 
-ggplot(abundance, aes(x = year, y = mean)) +
+ggplot(abundance, aes(x = label, y = mean)) +
   geom_bar(stat = "identity") +
-  facet_grid(.~species) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.1)) +
+  xlab('Year')+
+  ylab('Mean Abundance')
+
+ggsave(here::here("2022_in_season_report","figs", "cu_lice_abund.png"))
+```
+
+### Attached and Motile Stage Sea Lice Prevalence
+
+```{r prevalence plot, fig.cap= "The proportion (± SE) of juvenile chum salmon that had at least one sea louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_ in the Discovery Islands in 2022."}
+
+prevalence <- ts_lice %>% 
+  group_by(survey_date, seine_id) %>% 
+  filter(all_lice > 0) %>% 
+  summarise(n_infected = n())
+
+hosts <- ts_lice %>% 
+  group_by(survey_date) %>% 
+  summarize(n_examined = n())
+
+prevalence <- full_join(prevalence, hosts, by = "survey_date") %>% 
+  replace_na(list(n_infected = 0)) %>% 
+  mutate(year = year(survey_date), 
+         prevalence = n_infected / n_examined) %>% 
+  group_by(year) %>% 
+  summarize(mean_prevalence = mean(prevalence),
+            sd = sd(prevalence),
+            n = n(),
+            se = sd/sqrt(n)) %>% 
+    mutate(label = paste0(year,'\nN = ',n))
+
+ggplot(prevalence, aes(x = factor(year), y = mean_prevalence)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_prevalence - se, ymax = mean_prevalence + se), width = 0.1) +
+  ylab("Mean Prevalence") +
+  xlab("Year")
+
+ggsave(here::here("2022_in_season_report","figs", "cu_lice_prev.png"))
+```
+
+### Attached and Motile Stage Sea Lice Intensity
+
+```{r intensity, fig.cap = "The mean infection intensity (± SE) of _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice per juvenile salmon infected with one or more motile _Lepeophtheirus salmonis_ or _Caligus clemensi_ louse in 2022."}
+
+intensity <- ts_lice %>% 
+  ungroup() %>% 
+  filter(all_lice > 0) %>% 
+  group_by(year) %>% 
+  summarize(mean_intensity = mean(all_lice),
+            sd = sd(all_lice),
+            n = n(),
+            se = sd/sqrt(n)) %>% 
+    mutate(label = paste0(year,'\nN = ',n))
+
+ggplot(intensity, aes(x = factor(year), y = mean_intensity)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_intensity - se, ymax = mean_intensity + se), width = 0.1) +
+  xlab("Year") +
+  ylab("Mean Intensity")
+
+ggsave(here::here("2022_in_season_report","figs", "cu_lice_intens.png"))
+```
+
+### Motile Stage Sea Lice Only
+
+
+```{r}
+motile_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
+  filter(region == "DI",
+         species == "CU",
+         louse_species == "all_lice") %>% 
+  mutate(year = year(survey_date)) %>% 
+  select(year, survey_date, site_id, species, all_lice = n_lice)
+
+current_mots <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
+  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) %>% 
+  filter(species == "CU") %>% 
+  mutate(year = year(survey_date)) %>% 
+  select(year, site_id, survey_date, species, cm, cf, cgf,lm, lf, lgf) %>% 
+  mutate(all_lice = cm + cf + cgf + lm + lf + lgf) %>% 
+  select(year, site_id, survey_date, species, all_lice)
+
+mots <- bind_rows(motile_ts, current_mots)
+
+```
+
+```{r, eval = FALSE}
+library(rsample)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(purrr)
+library(modelr)
+
+mean_n_lice <- function(splits) {
+  x <- analysis(splits)
+  mean(x$n_lice)
+}
+
+this_is_it <- mots %>% 
+  split(list(.$year, .$survey_date, .$site_id, .$species))
+
+# remove empty permutations
+row_lt1 <- which(sapply(this_is_it, nrow) < 1)
+this_is_it <- this_is_it[-row_lt1]
+
+# Written by Biljana
+boots <- lapply(1:length(this_is_it), function(x){bootstraps(this_is_it[[x]], times=100)})
+ 
+abund_boot_samples <- lapply(1:length(boots),function(x){  
+  boots[[x]] %>% 
+  mutate(samples = unlist(map(splits, mean_n_lice)))})
+
+extract.boot.CI <- lapply(1:length(abund_boot_samples), function(x){quantile(abund_boot_samples[[x]]$samples,c(0.025, 0.975))} )
+
+extract.boot.CI = do.call(rbind,extract.boot.CI)
+```
+
+
+```{r mots abundance,  fig.cap = "The mean abundance (± SE) of motile _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice infecting juvenile chum salmon in 2022 compared to our time series."}
+
+mots %>% filter(species == "CU") %>% 
+  group_by(year) %>% 
+  summarize(mean_abundance = mean(all_lice),
+            sd = sd(all_lice),
+            n = n(),
+            se = sd/sqrt(n)) %>% 
+    mutate(label = paste0(year,'\nN=',n)) %>% 
+  ggplot(aes(x = label, y = mean_abundance)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), width = 0.2) +
+  ylab("Mean Abundance") +
+  xlab("Year")
+
+ggsave(here::here("2022_in_season_report","figs", "cu_motile_lice_abund.png"))
 ```
 
 
@@ -396,7 +567,7 @@ ggplot(abundance, aes(x = year, y = mean)) +
 
 ## Ocean Temperatures
 
-```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2021, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2022 that are below average and red areas represent above-average temperatures."}
+```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2021, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2022 that are below average and red areas represent above-average temperatures.", include = FALSE}
 
 plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
       geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
@@ -425,9 +596,7 @@ plot
 
 ## Highlights
 
-* Peak sockeye migration timing was up to two weeks later than in previous years
-* Sockeye catch abundance was low compared to all other years
-* Sea lice prevalence was lower on all species of salmon observed in this year compared to 2021
+
 
 ## References
 

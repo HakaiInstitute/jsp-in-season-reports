@@ -3,6 +3,8 @@ library(tidyverse)
 library(lubridate)
 library(here)
 
+client <- hakaiApi::Client$new()
+
 current_year <- year(Sys.Date())
 
 # Get CTD data from EIMS database using R API
