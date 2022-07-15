@@ -131,17 +131,30 @@ The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. 
 
 ## Key Parameters Reported
 
-* Catch Statistics and Migration Timing
+* Catch Statistics
 * Lengths
-* Parasite Presence
-* Ocean Temperatures
+* Parasite Loads
+
+For questions/comments please contact brett.johnson@hakai.org and b.hunt@oceans.ubc.ca
 
 The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance. The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
 
-![Salmon seining and oceanographic sampling locations in the Discovery Islands in 2022.](./figs/map_2022.png)
 
+![Salmon seining and oceanographic sampling locations in the Discovery Islands in 2022.](./figs/map_2022.jpeg)
+\newpage
 
-## Migration Timing
+# Migrtation Timing
+
+We have captured very few sockeye so far this season, so it is not feasible to calculate migration timing for sockeye as done in previous years.
+
+Table 1. Summary of sampling events conducted in 2022 in the Discovery Islands and totals of sockeye, pink, and chum salmon caught. Note NA indicates the net was not set.
+
+```{r}
+ss_2022 %>% 
+  select(`Survey Date`= survey_date, `Site ID` = site_id, Site = site_name, Sockeye = so_total, Pink = pi_total, Chum = cu_total) %>% 
+  knitr::kable()
+```
+
 
 ```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2022 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2021.", include = FALSE}
 df22 <- select(ss_2022, date = survey_date, so_total) %>% 
@@ -179,7 +192,7 @@ ss_all %>%
 
 ## Catch Intensity 
 
-```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which the species was caught, and error bars indicate 1 standard error."}
+```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which sockeye were caught, and error bars indicate 1 standard error."}
 
 catch_intensity_22 <- ss_2022 %>%
   rename("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total") %>%
@@ -349,19 +362,13 @@ di_length_hist_plot
 
 ## Parasite Loads
 
+In 2022 we resumed enumerating sea lice in the field using hand lenses to identify both attached (juvenile) and motile (adult) sea lice (Krkosek et al. 2005), after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes 2020 and 2021 for all species of salmon. We have also historically prioritized counting sea lice on sockeye, and given the low number of sockeye captured in 2022, here we report sea lice data for chum salmon only for this year thus far. We present data for abundance and prevalence of attached + motile lice for 2017, 2019 and 2022, and motile lice only for 2015-2022. 
+
 ### Definitions[^1] 
 
-_Abundance_: The total number of individuals of a particular parasite species in a sample of hosts ÷ Total number of individuals of the host species in the sample.
+_Abundance_: The total number of individuals of a particular parasite species in a sample of hosts ÷ Total number of individuals of the host species in the sample (Average number of lice per fish).
 
-_Prevalence_: Number of individuals of a host species infected with a particular parasite species ÷ Number of hosts examined. 
-
-_Intensity_: Total number of individuals
-of a particular parasite species
-in a sample of a host species ÷ Number
-of infected individuals of the host
-species in the sample (= Mean number
-of individuals of a particular parasite
-species per infected host in a sample). 
+_Prevalence_: Number of individuals of a host species infected with a particular parasite species ÷ Number of hosts examined (Proportion of fish infeccted with lice).
 
 [^1]: Margolis, L., Esch, G.W., Holmes, J.C., Kuris, A.M. and Schad, G.A. (1982). The use of ecological terms in parasitology: report of an ad hoc committee of the American Society of Parasitologists. J. Parasitol. 68:131–133.
 
@@ -370,210 +377,294 @@ species per infected host in a sample).
 
 # In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
 
-catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") %>% left_join(sites, by = "site_id") %>% 
-  filter(region == "DI")
+# In 2018 we didn't do attached stage licing in the field on pink or chum. only 10 sockeye. So, do we have any attached stage lice data from the lab in 2018??? - No, it appears not
 
-# QC and sample sizes
-field_samples <- catch_data %>% 
-  select(survey_date, species, all_lice, lice_id_protocol_field, region) %>%
-  filter(lice_id_protocol_field == "salmoncoast_allstages") %>%
-  count(species, year(survey_date), lice_id_protocol_field) 
-  
-lab_samples <- catch_data %>% select(survey_date, species, all_lice, lice_id_protocol_lab) %>% 
-  filter(lice_id_protocol_lab == "lportner_fine") %>% count(species, year(survey_date), lice_id_protocol_lab)
+# In 2019 we field liced (including attached stages) 10 sockeye, and only 3 pink and 3 chum from every seine
 
-samples <- full_join(field_samples, lab_samples, by = c("species", "year(survey_date)")) %>% 
-  ungroup() %>% 
-  mutate(n = n.x + n.y)
+catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") %>% left_join(sites, by = "site_id")
 
 ## compare 2022 vs timeseries
 
 current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
-  mutate(all_lice = cal_cope + lep_cope + chal_a_b+ cm+
-                        cf+ cgf+ lm+ lf+ lgf+unid_cope+ unid_chal) %>% 
+  mutate(all_lice = cal_cope + lep_cope + chal_a_b + cam + caf + cgf + lam + laf + lgf + unid_cope + unid_chal,
+         leps = lep_cope + lam + laf + lgf,
+         cal = cal_cope + cam + caf + cgf,
+         unk = chal_a_b + unid_cope + unid_chal,
+         ratio = sum(leps) / sum(cal),
+         inferred_leps = unk * ratio,
+         inferred_cal = unk * (1-ratio),
+         leps = leps + inferred_leps,
+         cal = cal + inferred_cal) %>% 
   right_join(ss_fish_2022, by = c('ufn', 'seine_id')) %>% 
-  select(survey_date, species, all_lice) %>% 
-  drop_na()
+  filter(region == "DI") %>% 
+  select(survey_date, species, leps, cal, all_lice) %>% 
+  drop_na() # removes fish we haven't been licing
 
 current_lice_samples <- current_lice %>% 
   count(species)
 
-#import time series attached stage lice
-ts_lice <- catch_data %>% 
-  select(seine_id, survey_date, species, all_lice, lice_collection_protocol, lice_id_protocol_field, lice_id_protocol_lab) %>% 
-  filter(lice_id_protocol_field == "salmoncoast_allstages" | lice_id_protocol_lab == "lportner_fine") %>% 
-  select(seine_id, survey_date, species, all_lice, lice_id_protocol_lab, lice_id_protocol_field) 
+# import time series attached stage lice
 
-ts_lice <- bind_rows(ts_lice, current_lice)
+# first read in sealice lab finescale
+sealice_lab_fs <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_lab_fs.csv") %>%
+  mutate(leps = lep_cop + lep_cunifer_cop + lep_chal_a + lep_chal_b + lep_pa_m_1 + lep_pa_m_2 + lep_pa_f_1 + lep_pa_f_2 + lep_pa_unid + lep_a_m + lep_a_f + lep_grav_f,
+         cal = cal_cop + cal_chal_a_1 + cal_chal_a_2 + cal_chal_b_3 + cal_chal_b_4_f + cal_chal_b_4_m + cal_chal_4_unid +cal_chal_a_unid + cal_chal_b_unid + cal_pa_m + cal_pa_f + cal_pa_m + cal_a_m + cal_a_f + cal_grav_f + cal_mot_unid,
+         all_lice = cal + leps) %>% 
+  select(ufn, leps, cal, all_lice) %>% 
+  left_join(catch_data, by = 'ufn') %>% 
+  filter(region == "DI") %>% 
+  drop_na(survey_date) %>% 
+  select(seine_id, survey_date, species, leps, cal, all_lice = all_lice.x)
+
+# second, read in field lice data
+sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_field.csv") %>% 
+  left_join(catch_data, by = 'ufn') %>%
+  select(-all_lice) %>% 
+  filter(region == "DI") %>% 
+  mutate(year = year(survey_date)) %>% 
+  mutate(all_lice = cal_cope_field + lep_cope_field + chal_a_field + chal_b_field + cal_mot_field + cgf_field + lpam_field + lpaf_field + lam_field + laf_field + unid_cope_field + unid_chal_field,
+         leps = lep_cope_field + lpam_field + lpaf_field + lam_field + laf_field,
+         cal = cal_cope_field + cal_mot_field + cgf_field,
+         unk = chal_a_field + chal_b_field + unid_cope_field + unid_chal_field) %>%
+  select(seine_id, survey_date, year, species, cal_cope_field:unid_chal_field, leps, cal, unk, all_lice) %>% 
+  group_by(year) %>% 
+  mutate(ratio = sum(leps, na.rm = TRUE) / sum(cal, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(inferred_leps = unk * ratio,
+         inferred_cal = unk * (1-ratio),
+         leps = leps + inferred_leps,
+         cal = cal + inferred_cal) %>% 
+  select(seine_id, survey_date, species, leps, cal, all_lice, unk, ratio, inferred_cal, inferred_leps) %>% 
+  select(seine_id, survey_date, species, leps, cal, all_lice)
+
+ts_lice <- bind_rows(sealice_lab_fs, sealice_field, current_lice)
 ts_lice$year <- year(ts_lice$survey_date)
 
-ts_lice <- ts_lice %>% 
-  filter(species == "CU")
+ts_lice$species <- ts_lice$species %>% 
+  fct_relevel("SO", "PI", "CU")
+
 ```
 
 ### Attached and Motile Stage Sea Lice Abundance
  
-```{r abundance plot, fig.cap = "The abundance  ± SE of attached and motile _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice combined infecting juvenile chum salmon in the Discovery Islands in 2022."}
+```{r abundance plot, include = FALSE}
 
-abundance <- ts_lice %>% 
-  group_by(year) %>% 
-  summarize(mean = mean(all_lice),
+cal_abundance <- ts_lice %>% 
+  group_by(year, species) %>% 
+  summarize(mean = mean(cal, na.rm = TRUE),
             n = n(),
-            se = sd(all_lice)/sqrt(n)) %>% 
+            se = sd(cal, na.rm = TRUE)/sqrt(n)) %>% 
   mutate(label = paste0(year,'\nN = ',n)) %>% 
-  ungroup()
+  ungroup() %>% 
+  drop_na(mean) %>% 
+  filter(n >= 10)
 
-ggplot(abundance, aes(x = label, y = mean)) +
-  geom_bar(stat = "identity") +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.1)) +
+cal_abund  <- ggplot(cal_abundance, aes(x = factor(year), y = mean, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2),
+                position = position_dodge(0.9)) +
   xlab('Year')+
-  ylab('Mean Abundance')
+  ylab('') +
+  ggtitle("C. clemensi") +
+  theme(plot.title = element_text(face = "italic"), axis.title.y=element_blank())+
+  theme(legend.position=c(0.85, 0.85)) +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
+  
+cal_abund
 
-ggsave(here::here("2022_in_season_report","figs", "cu_lice_abund.png"))
+## lep only abundance
+lep_abundance <- ts_lice %>% 
+  group_by(year, species) %>% 
+  summarize(mean = mean(leps, na.rm = TRUE),
+            n = n(),
+            se = sd(leps, na.rm = TRUE)/sqrt(n)) %>% 
+  mutate(label = paste0(year,'\nN = ',n)) %>% 
+  ungroup() %>% 
+  drop_na(mean) %>% 
+  filter(n >= 10)
+
+lep_abund <- ggplot(lep_abundance, aes(x = factor(year), y = mean, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, width = 0.2), position = position_dodge(0.9)) +
+  xlab('Year')+
+  ylab('Mean Abundance') +
+  ggtitle("L. salmonis") +
+  theme(plot.title = element_text(face = "italic"))+
+  theme(legend.position="none") +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
+lep_abund
+```
+
+```{r, fig.cap = "The abundance  ± SE of attached and motile _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice infecting juvenile juvenile salmon in the Discovery Islands in 2022. Note  the  different Y-axis scales. SO = sockeye, PI = pink, CU = chum"}
+cowplot::plot_grid(lep_abund, cal_abund, nrow = 1)
+ggsave(here::here("2022_in_season_report","figs", "cu_cal_lep_lice_abund.png"))
 ```
 
 ### Attached and Motile Stage Sea Lice Prevalence
 
-```{r prevalence plot, fig.cap= "The proportion (± SE) of juvenile chum salmon that had at least one sea louse of either _Lepeophtheirus salmonis_ and _Caligus clemensi_ in the Discovery Islands in 2022."}
+```{r prevalence plot}
 
-prevalence <- ts_lice %>% 
-  group_by(survey_date, seine_id) %>% 
-  filter(all_lice > 0) %>% 
+cal_prevalence <- ts_lice %>% 
+  group_by(survey_date, seine_id, species) %>% 
+  filter(cal >= 1) %>% # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
   summarise(n_infected = n())
 
 hosts <- ts_lice %>% 
-  group_by(survey_date) %>% 
+  group_by(survey_date, seine_id, species) %>% 
+  drop_na(all_lice) %>% 
   summarize(n_examined = n())
 
-prevalence <- full_join(prevalence, hosts, by = "survey_date") %>% 
+cal_prevalence <- full_join(cal_prevalence, hosts, by = c("survey_date", "seine_id", "species")) %>% 
   replace_na(list(n_infected = 0)) %>% 
   mutate(year = year(survey_date), 
          prevalence = n_infected / n_examined) %>% 
-  group_by(year) %>% 
+  group_by(year, species) %>% 
   summarize(mean_prevalence = mean(prevalence),
             sd = sd(prevalence),
             n = n(),
             se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN = ',n))
+    mutate(label = paste0(year,'\nN = ',n)) %>% 
+  filter(n >= 3)
 
-ggplot(prevalence, aes(x = factor(year), y = mean_prevalence)) +
-  geom_bar(stat = "identity") +
-  geom_errorbar(aes(ymin = mean_prevalence - se, ymax = mean_prevalence + se), width = 0.1) +
+cal_prev <- ggplot(cal_prevalence, aes(x = factor(year), y = mean_prevalence, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean_prevalence - se, ymax = mean_prevalence + se), width = 0.1, position = position_dodge(0.9)) +
   ylab("Mean Prevalence") +
-  xlab("Year")
+  xlab("Year") +
+  ggtitle("C. clemensi") +
+  theme(plot.title = element_text(face = "italic"), axis.title.y=element_blank()) +
+  ylim(c(0,1))+
+  theme(legend.position="none") +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
 
-ggsave(here::here("2022_in_season_report","figs", "cu_lice_prev.png"))
-```
 
-### Attached and Motile Stage Sea Lice Intensity
+# Lep prevalence
+lep_prevalence <- ts_lice %>% 
+  group_by(survey_date, seine_id, species) %>% 
+  filter(leps >= 1) %>% # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
+  summarise(n_infected = n())
 
-```{r intensity, fig.cap = "The mean infection intensity (± SE) of _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice per juvenile salmon infected with one or more motile _Lepeophtheirus salmonis_ or _Caligus clemensi_ louse in 2022."}
-
-intensity <- ts_lice %>% 
-  ungroup() %>% 
-  filter(all_lice > 0) %>% 
-  group_by(year) %>% 
-  summarize(mean_intensity = mean(all_lice),
-            sd = sd(all_lice),
+lep_prevalence <- full_join(lep_prevalence, hosts, by = c("survey_date", "seine_id", "species")) %>% 
+  replace_na(list(n_infected = 0)) %>% 
+  mutate(year = year(survey_date), 
+         prevalence = n_infected / n_examined) %>% 
+  group_by(year, species) %>% 
+  summarize(mean_prevalence = mean(prevalence),
+            sd = sd(prevalence),
             n = n(),
             se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN = ',n))
+    mutate(label = paste0(year,'\nN = ',n)) %>% 
+  filter(n >= 3)
 
-ggplot(intensity, aes(x = factor(year), y = mean_intensity)) +
-  geom_bar(stat = "identity") +
-  geom_errorbar(aes(ymin = mean_intensity - se, ymax = mean_intensity + se), width = 0.1) +
+lep_prev <- ggplot(lep_prevalence, aes(x = factor(year), y = mean_prevalence, fill = species)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean_prevalence - se, ymax = mean_prevalence + se), width = 0.1, position = position_dodge(0.9)) +
+  ylab("Mean Prevalence") +
   xlab("Year") +
-  ylab("Mean Intensity")
+  ggtitle("L. salmonis") +
+  theme(plot.title = element_text(face = "italic"))+
+  ylim(c(0,1))+
+  theme(legend.position= c(0.85, 0.85)) +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
+```
 
-ggsave(here::here("2022_in_season_report","figs", "cu_lice_intens.png"))
+```{r, fig.cap= "The proportion (± SE) of juvenile chum salmon that had at least one attached or motile _Lepeophtheirus salmonis_ or _Caligus clemensi_ sea louse in the Discovery Islands in 2022. SO = Sockeye, PI = Pink, CU = Chum"}
+cowplot::plot_grid(lep_prev, cal_prev, nrow = 1)
+ggsave(here::here("2022_in_season_report","figs", "cu_lep_lice_prev.png"))
 ```
 
 ### Motile Stage Sea Lice Only
 
-
-```{r}
-motile_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
+```{r mots abundance,  fig.cap = "The mean abundance (± SE) of motile  _Caligus clemensi_ sea lice infecting juvenile salmon in 2022 compared to our time series."}
+cal_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
   filter(region == "DI",
-         species == "CU",
-         louse_species == "all_lice") %>% 
+         louse_species == "motile_caligus") %>% 
   mutate(year = year(survey_date)) %>% 
   select(year, survey_date, site_id, species, all_lice = n_lice)
 
-current_mots <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
+current_cal_mots <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
   left_join(ss_fish_2022, by = c('seine_id', 'ufn')) %>% 
-  filter(species == "CU") %>% 
   mutate(year = year(survey_date)) %>% 
-  select(year, site_id, survey_date, species, cm, cf, cgf,lm, lf, lgf) %>% 
-  mutate(all_lice = cm + cf + cgf + lm + lf + lgf) %>% 
-  select(year, site_id, survey_date, species, all_lice)
+  select(year, site_id, survey_date, species, cam, caf, cgf, lam, laf, lgf) %>% 
+  mutate(cal = cam + caf + cgf) %>% 
+  select(year, site_id, survey_date, species, all_lice = cal)
 
-mots <- bind_rows(motile_ts, current_mots)
+cal_mots <- bind_rows(cal_mots_ts, current_cal_mots)
 
-```
+cal_mots$species <- cal_mots$species %>% 
+  fct_relevel("SO", "PI", "CU")
 
-```{r, eval = FALSE}
-library(rsample)
-library(dplyr)
-library(tidyr)
-library(broom)
-library(purrr)
-library(modelr)
-
-mean_n_lice <- function(splits) {
-  x <- analysis(splits)
-  mean(x$n_lice)
-}
-
-this_is_it <- mots %>% 
-  split(list(.$year, .$survey_date, .$site_id, .$species))
-
-# remove empty permutations
-row_lt1 <- which(sapply(this_is_it, nrow) < 1)
-this_is_it <- this_is_it[-row_lt1]
-
-# Written by Biljana
-boots <- lapply(1:length(this_is_it), function(x){bootstraps(this_is_it[[x]], times=100)})
- 
-abund_boot_samples <- lapply(1:length(boots),function(x){  
-  boots[[x]] %>% 
-  mutate(samples = unlist(map(splits, mean_n_lice)))})
-
-extract.boot.CI <- lapply(1:length(abund_boot_samples), function(x){quantile(abund_boot_samples[[x]]$samples,c(0.025, 0.975))} )
-
-extract.boot.CI = do.call(rbind,extract.boot.CI)
-```
-
-
-```{r mots abundance,  fig.cap = "The mean abundance (± SE) of motile _Lepeophtheirus salmonis_ and _Caligus clemensi_ sea lice infecting juvenile chum salmon in 2022 compared to our time series."}
-
-mots %>% filter(species == "CU") %>% 
-  group_by(year) %>% 
+mot_cal_plot <- cal_mots %>% 
+  group_by(year, species) %>% 
   summarize(mean_abundance = mean(all_lice),
             sd = sd(all_lice),
             n = n(),
             se = sd/sqrt(n)) %>% 
     mutate(label = paste0(year,'\nN=',n)) %>% 
-  ggplot(aes(x = label, y = mean_abundance)) +
-  geom_bar(stat = "identity") +
-  geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), width = 0.2) +
+  ggplot(aes(x = year, y = mean_abundance, fill = species)) +
+  geom_bar(stat = "identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), position = position_dodge(0.9), width = 0.2) +
   ylab("Mean Abundance") +
-  xlab("Year")
+  xlab("Year") +
+  ggtitle("C. clemensi") +
+  theme(plot.title = element_text(face = "italic")) +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
+        
 
-ggsave(here::here("2022_in_season_report","figs", "cu_motile_lice_abund.png"))
+mot_cal_plot
+
 ```
 
+```{r,  fig.cap = "The mean abundance (± SE) of motile _Lepeophtheirus salmonis_ sea lice infecting juvenile salmon in 2022 compared to our time series"}
+# Leps only
+lep_motile_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
+  filter(region == "DI",
+         louse_species == "motile_lep") %>% 
+  mutate(year = year(survey_date)) %>% 
+  select(year, survey_date, site_id, species, louse_species, n_lice)
+
+current_mot_leps <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
+  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) %>% 
+  mutate(year = year(survey_date)) %>% 
+  select(year, site_id, survey_date, species, cam, caf, cgf,lam, laf, lgf) %>% 
+  mutate(n_lice = lam + laf + lgf) %>% 
+  select(year, site_id, survey_date, species, n_lice)
+
+mot_leps <- bind_rows(lep_motile_ts, current_mot_leps)
+
+mot_leps$species <- mot_leps$species %>% 
+  fct_relevel("SO", "PI", "CU")
+
+mot_leps_plot <- mot_leps %>% 
+  group_by(year, species) %>% 
+  summarize(mean_abundance = mean(n_lice),
+            sd = sd(n_lice),
+            n = n(),
+            se = sd/sqrt(n)) %>% 
+    mutate(label = paste0(year,'\nN=',n)) %>% 
+  ggplot(aes(x = year, y = mean_abundance, fill = species)) +
+  geom_bar(stat = "identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), width = 0.2, position=position_dodge(0.9)) +
+  ylab("Mean Abundance") +
+  xlab("Year") +
+  ggtitle("L. salmonis") +
+  theme(plot.title = element_text(face = "italic")) +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))
+
+mot_leps_plot
+```
 
 \newpage
 
 ## Ocean Temperatures
 
-```{r, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2021, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2022 that are below average and red areas represent above-average temperatures.", include = FALSE}
+```{r SST, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2021, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2022 that are below average and red areas represent above-average temperatures."}
 
 plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
       geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
      #geom_line(aes(x = yday, y = predicted_mean_temp)) +
       geom_ribbon(data = subset(temperature_anomaly_data,
-                                mean_temp >= predicted_mean_temp & yday != 39.5),
+                                mean_temp >= predicted_mean_temp),
                   aes(ymin = predicted_mean_temp, ymax = mean_temp),
                   fill = "#d73027", size = 1) +
       geom_ribbon(data = subset(temperature_anomaly_data,
@@ -584,7 +675,7 @@ plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
                   size = 1, colour = 'black', se = T, span = .65) + 
       geom_point(data = qu39_this_year, aes(x = yday, y = mean_temp), size = 0.75) +
       scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
-                         labels = (c("Feb", "Mar", "Apr", "May", "Jun", 
+                         labels = (c("Feb", "Mar", "Apr", "May", "Jun",
                                      "Jul", "Aug"))) +
       labs(x = "Date", y = "Temperature (°C)") +
   labs(title = "2022 Ocean Temperatures")+
@@ -600,4 +691,8 @@ plot
 
 ## References
 
-Hunt, B.P.V., B.T. Johnson, S.C. Godwin, M. Krkosek, E.A. Pakhomov, and L. Rogers. 2018. The Hakai Institute Juvenile Salmon Program: early life history of sockeye, pink and chum salmon in British Columbia, Canada. NPAFC Doc. 1788. 14 pp. Institute for the Oceans and Fisheries and Department of Earth, Ocean and Atmospheric Sciences, University of British Columbia, Hakai Institute, Earth to Ocean Research Group, Simon Fraser University, Department of Ecology and Evolutionary Biology, University of Toronto, and Salmon Coast Field Station (Available at http://www.npafc.org).
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hunt, B.P.V., B.T. Johnson, S.C. Godwin, M. Krkosek, E.A. Pakhomov, and L. Rogers. 2018. The Hakai Institute Juvenile Salmon Program: early life history of sockeye, pink and chum salmon in British Columbia, Canada. NPAFC Doc. 1788. 14 pp. Institute for the Oceans and Fisheries and Department of Earth, Ocean and Atmospheric Sciences, University of British Columbia, Hakai Institute, Earth to Ocean Research Group, Simon Fraser University, Department of Ecology and Evolutionary Biology, University of Toronto, and Salmon Coast Field Station (Available at http://www.npafc.org).
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Johnson, B., Gan, J., Godwin, S., Bachen, K., van der Stap, T., Krkosek, M., Rogers, L. A., Portner, L., Janusson, C., & Hunt, B. P. V. (2017). Hakai Institute Juvenile Salmon Program Time Series. [Dataset] https://doi.org/10.21966/1.566666
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Krkošek, M., Morton, A., and Volpe, J.P. 2005b. Nonlethal ssessment of juvenile pink and chum salmon for parasitic sea lice infections and fish health. Trans. Am. Fish. Soc. 134(3): 711–716. doi:10.1577/T04-133.1.
