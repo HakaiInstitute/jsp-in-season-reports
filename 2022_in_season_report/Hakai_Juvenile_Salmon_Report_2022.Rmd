@@ -29,7 +29,6 @@ library(here)
 library(googlesheets4)
 library(ggridges)
 library(hakaiApi)
-library(here)
 library(hakaiR)
 options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
 theme_set(hakaiR::hakademic_theme(base_size = 17))
@@ -46,11 +45,12 @@ temperature_anomaly_data <- read_csv(here("2022_in_season_report", "data", "temp
 average_temps <- read_csv(here("2022_in_season_report", "data", "average_temps.csv"))
 qu39_this_year <- read_csv(here("2022_in_season_report", "data", "qu39_this_year.csv"))
 
-survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/survey_seines.csv") %>% 
-  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) %>% 
+survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/survey_seines.csv") |> 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) |> 
   left_join(select(sites,
                    site_id,
                    region))
+
 
 survey_seines_GH$sampling_week <-
   recode_factor(
@@ -70,8 +70,8 @@ survey_seines_GH$sampling_week <-
 
 # Run first line independently so you can interactively enter authentication url in the console
 
-surveys_2022 <- read_sheet(field_data_url, sheet = "survey_data") %>% 
-  drop_na(survey_id) %>% 
+surveys_2022 <- read_sheet(field_data_url, sheet = "survey_data") |> 
+  drop_na(survey_id) |> 
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
 
 1
@@ -89,16 +89,16 @@ surveys_2022$sampling_week <- recode_factor(surveys_2022$sampling_week,
                                            `27` = "July 6", 
                                            `28` = "July 13")
 
-seines_2022 <- read_sheet(field_data_url, sheet = "seine_data") %>% 
+seines_2022 <- read_sheet(field_data_url, sheet = "seine_data") |> 
   drop_na(seine_id)
 
-ss_2022 <- left_join(surveys_2022, seines_2022, by = "survey_id") %>% 
-  left_join(select(sites, site_id, zone), by = "site_id") %>% 
-  mutate(year = year(survey_date)) %>% 
+ss_2022 <- left_join(surveys_2022, seines_2022, by = "survey_id") |> 
+  left_join(select(sites, site_id, zone), by = "site_id") |> 
+  mutate(year = year(survey_date)) |> 
   drop_na(survey_id)
 
-fish_field_2022 <- read_sheet(field_data_url, sheet = "fish_field_data") %>% 
-  drop_na(ufn) %>% 
+fish_field_2022 <- read_sheet(field_data_url, sheet = "fish_field_data") |> 
+  drop_na(ufn) |> 
   mutate(region = "DI")
 
 ss_fish_2022 <- left_join(fish_field_2022, ss_2022)
@@ -150,33 +150,33 @@ We have captured very few sockeye so far this season, so it is not feasible to c
 Table 1. Summary of sampling events conducted in 2022 in the Discovery Islands and totals of sockeye, pink, and chum salmon caught. Note NA indicates the net was not set.
 
 ```{r}
-ss_2022 %>% 
-  select(`Survey Date`= survey_date, `Site ID` = site_id, Site = site_name, Sockeye = so_total, Pink = pi_total, Chum = cu_total) %>% 
+ss_2022 |> 
+  select(`Survey Date`= survey_date, `Site ID` = site_id, Site = site_name, Sockeye = so_total, Pink = pi_total, Chum = cu_total) |> 
   knitr::kable()
 ```
 
 
 ```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2022 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2021.", include = FALSE}
-df22 <- select(ss_2022, date = survey_date, so_total) %>% 
+df22 <- select(ss_2022, date = survey_date, so_total) |> 
   mutate(group = "2022")
 
-dfall <- select(survey_seines_GH, survey_date, so_total) %>% 
-  group_by(survey_date) %>% 
-  summarize(so_total = mean(so_total)) %>% 
+dfall <- select(survey_seines_GH, survey_date, so_total) |> 
+  group_by(survey_date) |> 
+  summarize(so_total = mean(so_total)) |> 
    mutate(year = 2022, # This is a trick to get the averages to compute for the same day between years
          month = month(survey_date),
          day = day(survey_date),
-         date = as_date(paste(year,month,day,  sep = "-"))) %>% 
-  group_by(date) %>% 
-  summarize(so_total = mean(so_total)) %>% 
-  mutate(group = "2015-2021") %>% 
+         date = as_date(paste(year,month,day,  sep = "-"))) |> 
+  group_by(date) |> 
+  summarize(so_total = mean(so_total)) |> 
+  mutate(group = "2015-2021") |> 
   ungroup()
 
 ss_all <- bind_rows(df22,dfall)
 
-ss_all %>% 
+ss_all |> 
   mutate(seven_avg= zoo::rollmean(so_total, 5,
-                             fill=NA)) %>%
+                             fill=NA)) |>
    ggplot(aes(x=date,
              y=so_total)) +
   geom_bar(aes(fill = group), alpha = .35, stat = "identity", position=position_dodge())+
@@ -194,26 +194,26 @@ ss_all %>%
 
 ```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which sockeye were caught, and error bars indicate 1 standard error."}
 
-catch_intensity_22 <- ss_2022 %>%
-  rename("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total") %>%
+catch_intensity_22 <- ss_2022 |>
+  rename("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total") |>
   # remove seines that did not catch any sockeye, even if they caught other spp
-  filter(Sockeye > 0) %>% 
-  select(year, Sockeye, Pink, Chum) %>% 
+  filter(Sockeye > 0) |> 
+  select(year, Sockeye, Pink, Chum) |> 
   gather(key = species, value = catch, - year) 
 
-# %>% 
+# |> 
 #   # Filter out catches where no pink and chum were caught, so that catch intensity is consistent for each species. Ie. catch intensity for sockeye is the average number of sockeye when catch of sockeye is > 0, catch intensity of pink is the average number of pink caught when > 1 pink was caught, and so on for chum as well.
 #   filter(catch > 0)
 
-catch_intensity_22 <- catch_intensity_22 %>% 
-  group_by(year, species) %>% 
+catch_intensity_22 <- catch_intensity_22 |> 
+  group_by(year, species) |> 
   summarize(mean_catch = mean(catch),
             sd = sd(catch),
-            n = n())%>% 
+            n = n())|> 
   mutate(se = sd / sqrt(n),
          lower_ci = qt(1 - (0.05 / 2), n - 1) * se,
-         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) %>% 
-  ungroup() %>% 
+         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) |> 
+  ungroup() |> 
   mutate_if(is.numeric, round, 1)
 
 
@@ -222,7 +222,7 @@ catch_intensity <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/js
 
 catch_intensity <- bind_rows(catch_intensity, catch_intensity_22)
 
-catch_intensity$species <- catch_intensity$species %>%
+catch_intensity$species <- catch_intensity$species |>
   fct_relevel("Sockeye", "Pink", "Chum")
 
 (ggplot(catch_intensity, aes(x = factor(year), y = mean_catch, fill = species)) +
@@ -245,7 +245,7 @@ catch_intensity$species <- catch_intensity$species %>%
 species_prop_2015_2021 <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/proportion.csv")
 
 
-species_prop_2022 <- ss_2022 %>%
+species_prop_2022 <- ss_2022 |>
  select(
     survey_date,
     seine_id,
@@ -254,12 +254,12 @@ species_prop_2022 <- ss_2022 %>%
     cu_total,
     co_total,
     he_total
-  ) %>%
+  ) |>
   # Next I remove instances when no sockeye were caught. I'm doing this because in 2015 and 2016 we only enumerated catches in which we caught sockeye, whereas in 2017 and 2018 we enumerated all seines. So to reduce the bias introduced from the field method i filter the comparison down to where field methods are comparable
-  filter(so_total > 0) %>%
+  filter(so_total > 0) |>
   # remove instances when not all species were enumerated by droping rows with NA
-  drop_na() %>%
-  mutate(year = year(survey_date)) %>%
+  drop_na() |>
+  mutate(year = year(survey_date)) |>
   gather(
     `so_total`,
     `pi_total`,
@@ -268,24 +268,24 @@ species_prop_2022 <- ss_2022 %>%
     `he_total`,
     key = "species",
     value = "n"
-  ) %>%
+  ) |>
   drop_na()
 
 spp_prop_expanded <-
-  species_prop_2022[rep(row.names(species_prop_2022), species_prop_2022$n), 1:5] %>%
+  species_prop_2022[rep(row.names(species_prop_2022), species_prop_2022$n), 1:5] |>
   mutate(yday = yday(survey_date), year = year(survey_date))
 
-species_prop_2022 <- spp_prop_expanded %>%
-  group_by(year, species) %>%
-  summarize(n = n()) %>%
-  mutate(proportion = n / sum(n)) %>%
+species_prop_2022 <- spp_prop_expanded |>
+  group_by(year, species) |>
+  summarize(n = n()) |>
+  mutate(proportion = n / sum(n)) |>
   ungroup()
 
 # Combined proportions from 2015 - 2022, Discovery Islands
 species_prop_total <- bind_rows(species_prop_2015_2021, species_prop_2022)
 
-species_prop_total$species <- species_prop_total$species %>% 
-  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total") %>% 
+species_prop_total$species <- species_prop_total$species |> 
+  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total") |> 
   fct_recode("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total", "Coho" = "co_total",
              "Herring" = "he_total")
 
@@ -310,7 +310,7 @@ species_prop_total_graph
 length_histo <-
   read_csv(
     "https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/length_histo.csv"
-  ) %>%
+  ) |>
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
 
 length_histo$sampling_week <- recode_factor(length_histo$sampling_week, 
@@ -326,17 +326,17 @@ length_histo$sampling_week <- recode_factor(length_histo$sampling_week,
                                            `27` = "July 6", 
                                            `28` = "July 13")
   
-annual_di_length_histo <- length_histo %>% 
-  select(sampling_week, survey_date, region, species, fork_length) %>% 
+annual_di_length_histo <- length_histo |> 
+  select(sampling_week, survey_date, region, species, fork_length) |> 
   filter(species %in% c("SO", "PI", "CU"),
-         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30", "July 6")) %>% 
+         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30", "July 6")) |> 
   mutate(year = "2015-2021",
          fork_length = as.numeric(fork_length))
 
-di_length_histo_2022 <- ss_fish_2022 %>% 
-  select(sampling_week, survey_date, region, species, fork_length = fork_length_field) %>% 
-  filter(species %in% c("SO", "PI", "CU"), region == "DI") %>% 
-  filter(fork_length != "NA") %>% 
+di_length_histo_2022 <- ss_fish_2022 |> 
+  select(sampling_week, survey_date, region, species, fork_length = fork_length_field) |> 
+  filter(species %in% c("SO", "PI", "CU"), region == "DI") |> 
+  filter(fork_length != "NA") |> 
   mutate(year = "2022",
          fork_length = as.numeric(fork_length))
 
@@ -381,67 +381,130 @@ _Prevalence_: Number of individuals of a host species infected with a particular
 
 # In 2019 we field liced (including attached stages) 10 sockeye, and only 3 pink and 3 chum from every seine
 
-catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") %>% left_join(sites, by = "site_id")
+catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") |> left_join(sites, by = "site_id")
 
-## compare 2022 vs timeseries
+# build table for attached stage lice
 
-current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
-  mutate(all_lice = cal_cope + lep_cope + chal_a_b + cam + caf + cgf + lam + laf + lgf + unid_cope + unid_chal,
-         leps = lep_cope + lam + laf + lgf,
+# Read in current year lice data
+current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") |> 
+# Join sea lice data to seine and survey_data by ufn and seine id
+  right_join(ss_fish_2022, by = c('ufn', 'seine_id')) |> 
+# select relevant columns and all sea lice counts
+  select(survey_date, seine_id, ufn, species, lep_cope, lam, laf, lgf, cal_cope, cam, caf, cgf,
+         chal_a_b, unid_cope, unid_chal) |> 
+# Get rid of fish that were not loused
+    drop_na() |> 
+# Calculate total leps and cals to get ratio to infer to chalimus stages
+  mutate(leps = lep_cope + lam + laf + lgf,
          cal = cal_cope + cam + caf + cgf,
          unk = chal_a_b + unid_cope + unid_chal,
-         ratio = sum(leps) / sum(cal),
+         ratio = sum(leps, na.rm = TRUE) / sum(cal, na.rm = TRUE),
          inferred_leps = unk * ratio,
-         inferred_cal = unk * (1-ratio),
-         leps = leps + inferred_leps,
-         cal = cal + inferred_cal) %>% 
-  right_join(ss_fish_2022, by = c('ufn', 'seine_id')) %>% 
-  filter(region == "DI") %>% 
-  select(survey_date, species, leps, cal, all_lice) %>% 
-  drop_na() # removes fish we haven't been licing
-
-current_lice_samples <- current_lice %>% 
-  count(species)
+         inferred_cal = unk * (1-ratio)) |>
+# Remove intermediate cols
+  select(survey_date, seine_id, ufn, species,lep_cope, lam, laf, lgf, cal_cope, cam, caf, cgf, inferred_leps,
+         inferred_cal) |> 
+# Make 1 row an observation of one louse
+  pivot_longer(cols = lep_cope:inferred_cal, names_to = "louse_species", values_to = "count") |> 
+# Assign stages
+  mutate(life_stage = if_else(louse_species %in% c("cal_cope", "lep_cope", "inferred_leps", "inferred_cal"), "attached", "motile"),
+# Assign species
+         louse_species = if_else(louse_species %in% c("cal_cope", "inferred_cal", "cam", "caf", "cgf"), "Caligus clemensi", "Lepeophtheirus salmonis")) |> 
+# Total up all sea lice by fish, louse species and lifestage
+  group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
+  summarize(count = sum(count)) |> 
+  ungroup()
 
 # import time series attached stage lice
 
 # first read in sealice lab finescale
-sealice_lab_fs <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_lab_fs.csv") %>%
-  mutate(leps = lep_cop + lep_cunifer_cop + lep_chal_a + lep_chal_b + lep_pa_m_1 + lep_pa_m_2 + lep_pa_f_1 + lep_pa_f_2 + lep_pa_unid + lep_a_m + lep_a_f + lep_grav_f,
-         cal = cal_cop + cal_chal_a_1 + cal_chal_a_2 + cal_chal_b_3 + cal_chal_b_4_f + cal_chal_b_4_m + cal_chal_4_unid +cal_chal_a_unid + cal_chal_b_unid + cal_pa_m + cal_pa_f + cal_pa_m + cal_a_m + cal_a_f + cal_grav_f + cal_mot_unid,
-         all_lice = cal + leps) %>% 
-  select(ufn, leps, cal, all_lice) %>% 
-  left_join(catch_data, by = 'ufn') %>% 
-  filter(region == "DI") %>% 
-  drop_na(survey_date) %>% 
-  select(seine_id, survey_date, species, leps, cal, all_lice = all_lice.x)
+sealice_lab_fs <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_lab_fs.csv") |>
+# Join to catch data only by UFN 
+  left_join(catch_data, by = c("ufn")) |> 
+# Include only fish from Discovery Islands
+  filter(region == "DI") |> 
+# Make one row equal to one louse observation
+  pivot_longer(cols = lep_cop:cal_mot_unid, names_to = "louse_species", values_to = "count") |> 
+  drop_na(count) |>
+  select(survey_date, seine_id, ufn, species, louse_species, count) |> 
+# name louse stage based on original columns
+  mutate(life_stage = if_else(louse_species %in% c("lep_cop", "lep_cunifer_cop", "lep_chal_a", "lep_chal_b", "cal_cop", "cal_chal_a_1", "cal_chal_a_2", "cal_chal_b_3", "cal_chal_b_4_f", "cal_chal_b_4_m", "cal_chal_4_unid", "cal_chal_a_unid", "cal_chal_b_unid"), "attached", "motile"),
+    louse_species = if_else(louse_species %in% c("lep_cop", "lep_cunifer_cop", "lep_chal_a", "lep_chal_b", "lep_pa_m_1", "lep_pa_m_2", "lep_pa_f_1", "lep_pa_f_2", "lep_pa_unid", "lep_a_m", "lep_a_f", "lep_grav_f"), "Lepeophtheirus salmonis", "Caligus clemensi")) |> 
+  group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
+  summarize(count = sum(count)) |> 
+  ungroup()
 
 # second, read in field lice data
-sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_field.csv") %>% 
-  left_join(catch_data, by = 'ufn') %>%
-  select(-all_lice) %>% 
-  filter(region == "DI") %>% 
-  mutate(year = year(survey_date)) %>% 
-  mutate(all_lice = cal_cope_field + lep_cope_field + chal_a_field + chal_b_field + cal_mot_field + cgf_field + lpam_field + lpaf_field + lam_field + laf_field + unid_cope_field + unid_chal_field,
-         leps = lep_cope_field + lpam_field + lpaf_field + lam_field + laf_field,
+#TODO: Figure out why 2020 and 2021 isn't appearing
+sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_field.csv") |> 
+# Join to catch data just by ufn
+  left_join(catch_data, by = 'ufn') |>
+  filter(region == "DI") |> 
+  mutate(year = year(survey_date)) |> 
+  mutate(leps = lep_cope_field + lpam_field + lpaf_field + lam_field +
+         laf_field + lgf_field,
          cal = cal_cope_field + cal_mot_field + cgf_field,
-         unk = chal_a_field + chal_b_field + unid_cope_field + unid_chal_field) %>%
-  select(seine_id, survey_date, year, species, cal_cope_field:unid_chal_field, leps, cal, unk, all_lice) %>% 
-  group_by(year) %>% 
-  mutate(ratio = sum(leps, na.rm = TRUE) / sum(cal, na.rm = TRUE)) %>% 
-  ungroup() %>% 
+         unk = chal_a_field + chal_b_field + unid_cope_field + 
+           unid_chal_field) |>
+  select(seine_id, survey_date, ufn, year, species,
+         cal_cope_field:unid_chal_field, leps, cal, unk) |> 
+  group_by(year) |> 
+  mutate(ratio = sum(leps, na.rm = TRUE) / sum(cal, na.rm = TRUE)) |> 
+  ungroup() |> 
   mutate(inferred_leps = unk * ratio,
-         inferred_cal = unk * (1-ratio),
-         leps = leps + inferred_leps,
-         cal = cal + inferred_cal) %>% 
-  select(seine_id, survey_date, species, leps, cal, all_lice, unk, ratio, inferred_cal, inferred_leps) %>% 
-  select(seine_id, survey_date, species, leps, cal, all_lice)
+         inferred_cal = unk * (1-ratio)) |> 
+  select(-c(year, unk, ratio, leps, cal, chal_a_field, chal_b_field, unid_cope_field, unid_chal_field)) |> 
+  pivot_longer(cols = cal_cope_field:inferred_cal, 
+               names_to = "louse_species", values_to = "count") |> 
+  drop_na(count) |> 
+  mutate(life_stage = if_else(louse_species %in% c("cal_cope_field", "lep_cope_field", "inferred_leps", "inferred_cal"), "attached", "motile"),
+         louse_species = if_else(louse_species %in% c("cal_cope_field", "cal_mot_field", "inferred_cal", "cgf_field"), "Caligus clemensi", "Lepeophtheirus salmonis"))|> 
+  group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
+  summarize(count = sum(count))
 
-ts_lice <- bind_rows(sealice_lab_fs, sealice_field, current_lice)
-ts_lice$year <- year(ts_lice$survey_date)
+#TODO: Include 2020 and 2021 motile counts from the lab
+#TODO: combine lab and field observations where they exist with preference for lab observations 
+lab_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") |> 
+  filter(region == "DI", 
+         year == year(survey_date)) |> 
+  select(year, survey_date, species, motile_lice = n_lice)
 
-ts_lice$species <- ts_lice$species %>% 
-  fct_relevel("SO", "PI", "CU")
+#TODO: I need to recalculate just how many of each species were loused for each type of stage in each year
+
+hosts_observed <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
+  drop_na(count) |>
+  mutate(year = year(survey_date)) |>
+  distinct(year, species, ufn) |>
+  group_by(year, species) |>
+  summarize(n = n()) |>
+  ungroup()
+
+sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
+  filter(!species == "CO") |> 
+  drop_na(count) |>
+  mutate(year = year(survey_date)) |> 
+  ungroup() |> 
+  dplyr::group_by(year, species, louse_species, life_stage) |> 
+  dplyr::summarize(mean_abundance = mean(count, na.rm = TRUE),
+            sd = sd(count, na.rm = TRUE)) |> 
+  left_join(hosts_observed, by = c('year', 'species')) 
+
+sealice_df$species <- factor(sealice_df$species) |> 
+   fct_relevel("SO", "PI", "CU")
+
+ggplot(sealice_df, aes(x = factor(year), y = mean_abundance, fill = species)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge()) +
+  geom_errorbar(aes(ymin = if_else(mean_abundance - se < 0, 0,
+                                   mean_abundance - se), 
+                    ymax = mean_abundance + se, width = 0.2),
+                position = position_dodge(0.9)) +
+  facet_grid(louse_species ~ life_stage, scales = "free") +
+  scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+  xlab("Year") +
+  ylab("Mean Abundance")
+  
+
 
 ```
 
@@ -449,14 +512,14 @@ ts_lice$species <- ts_lice$species %>%
  
 ```{r abundance plot, include = FALSE}
 
-cal_abundance <- ts_lice %>% 
-  group_by(year, species) %>% 
+cal_abundance <- ts_lice |> 
+  group_by(year, species) |> 
   summarize(mean = mean(cal, na.rm = TRUE),
             n = n(),
-            se = sd(cal, na.rm = TRUE)/sqrt(n)) %>% 
-  mutate(label = paste0(year,'\nN = ',n)) %>% 
-  ungroup() %>% 
-  drop_na(mean) %>% 
+            se = sd(cal, na.rm = TRUE)/sqrt(n)) |> 
+  mutate(label = paste0(year,'\nN = ',n)) |> 
+  ungroup() |> 
+  drop_na(mean) |> 
   filter(n >= 10)
 
 cal_abund  <- ggplot(cal_abundance, aes(x = factor(year), y = mean, fill = species)) +
@@ -473,14 +536,14 @@ cal_abund  <- ggplot(cal_abundance, aes(x = factor(year), y = mean, fill = speci
 cal_abund
 
 ## lep only abundance
-lep_abundance <- ts_lice %>% 
-  group_by(year, species) %>% 
+lep_abundance <- ts_lice |> 
+  group_by(year, species) |> 
   summarize(mean = mean(leps, na.rm = TRUE),
             n = n(),
-            se = sd(leps, na.rm = TRUE)/sqrt(n)) %>% 
-  mutate(label = paste0(year,'\nN = ',n)) %>% 
-  ungroup() %>% 
-  drop_na(mean) %>% 
+            se = sd(leps, na.rm = TRUE)/sqrt(n)) |> 
+  mutate(label = paste0(year,'\nN = ',n)) |> 
+  ungroup() |> 
+  drop_na(mean) |> 
   filter(n >= 10)
 
 lep_abund <- ggplot(lep_abundance, aes(x = factor(year), y = mean, fill = species)) +
@@ -504,26 +567,26 @@ ggsave(here::here("2022_in_season_report","figs", "cu_cal_lep_lice_abund.png"))
 
 ```{r prevalence plot}
 
-cal_prevalence <- ts_lice %>% 
-  group_by(survey_date, seine_id, species) %>% 
-  filter(cal >= 1) %>% # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
+cal_prevalence <- ts_lice |> 
+  group_by(survey_date, seine_id, species) |> 
+  filter(cal >= 1) |> # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
   summarise(n_infected = n())
 
-hosts <- ts_lice %>% 
-  group_by(survey_date, seine_id, species) %>% 
-  drop_na(all_lice) %>% 
+hosts <- ts_lice |> 
+  group_by(survey_date, seine_id, species) |> 
+  drop_na(all_lice) |> 
   summarize(n_examined = n())
 
-cal_prevalence <- full_join(cal_prevalence, hosts, by = c("survey_date", "seine_id", "species")) %>% 
-  replace_na(list(n_infected = 0)) %>% 
+cal_prevalence <- full_join(cal_prevalence, hosts, by = c("survey_date", "seine_id", "species")) |> 
+  replace_na(list(n_infected = 0)) |> 
   mutate(year = year(survey_date), 
-         prevalence = n_infected / n_examined) %>% 
-  group_by(year, species) %>% 
+         prevalence = n_infected / n_examined) |> 
+  group_by(year, species) |> 
   summarize(mean_prevalence = mean(prevalence),
             sd = sd(prevalence),
             n = n(),
-            se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN = ',n)) %>% 
+            se = sd/sqrt(n)) |> 
+    mutate(label = paste0(year,'\nN = ',n)) |> 
   filter(n >= 3)
 
 cal_prev <- ggplot(cal_prevalence, aes(x = factor(year), y = mean_prevalence, fill = species)) +
@@ -539,21 +602,21 @@ cal_prev <- ggplot(cal_prevalence, aes(x = factor(year), y = mean_prevalence, fi
 
 
 # Lep prevalence
-lep_prevalence <- ts_lice %>% 
-  group_by(survey_date, seine_id, species) %>% 
-  filter(leps >= 1) %>% # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
+lep_prevalence <- ts_lice |> 
+  group_by(survey_date, seine_id, species) |> 
+  filter(leps >= 1) |> # greater than or equal to  1 because of fractional contrributions of inferred cal or leps
   summarise(n_infected = n())
 
-lep_prevalence <- full_join(lep_prevalence, hosts, by = c("survey_date", "seine_id", "species")) %>% 
-  replace_na(list(n_infected = 0)) %>% 
+lep_prevalence <- full_join(lep_prevalence, hosts, by = c("survey_date", "seine_id", "species")) |> 
+  replace_na(list(n_infected = 0)) |> 
   mutate(year = year(survey_date), 
-         prevalence = n_infected / n_examined) %>% 
-  group_by(year, species) %>% 
+         prevalence = n_infected / n_examined) |> 
+  group_by(year, species) |> 
   summarize(mean_prevalence = mean(prevalence),
             sd = sd(prevalence),
             n = n(),
-            se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN = ',n)) %>% 
+            se = sd/sqrt(n)) |> 
+    mutate(label = paste0(year,'\nN = ',n)) |> 
   filter(n >= 3)
 
 lep_prev <- ggplot(lep_prevalence, aes(x = factor(year), y = mean_prevalence, fill = species)) +
@@ -576,31 +639,31 @@ ggsave(here::here("2022_in_season_report","figs", "cu_lep_lice_prev.png"))
 ### Motile Stage Sea Lice Only
 
 ```{r mots abundance,  fig.cap = "The mean abundance (± SE) of motile  _Caligus clemensi_ sea lice infecting juvenile salmon in 2022 compared to our time series."}
-cal_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
+cal_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") |> 
   filter(region == "DI",
-         louse_species == "motile_caligus") %>% 
-  mutate(year = year(survey_date)) %>% 
+         louse_species == "motile_caligus") |> 
+  mutate(year = year(survey_date)) |> 
   select(year, survey_date, site_id, species, all_lice = n_lice)
 
-current_cal_mots <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
-  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) %>% 
-  mutate(year = year(survey_date)) %>% 
-  select(year, site_id, survey_date, species, cam, caf, cgf, lam, laf, lgf) %>% 
-  mutate(cal = cam + caf + cgf) %>% 
+current_cal_mots <- read_sheet(field_data_url, sheet = "sealice_field_data") |> 
+  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) |> 
+  mutate(year = year(survey_date)) |> 
+  select(year, site_id, survey_date, species, cam, caf, cgf, lam, laf, lgf) |> 
+  mutate(cal = cam + caf + cgf) |> 
   select(year, site_id, survey_date, species, all_lice = cal)
 
 cal_mots <- bind_rows(cal_mots_ts, current_cal_mots)
 
-cal_mots$species <- cal_mots$species %>% 
+cal_mots$species <- cal_mots$species |> 
   fct_relevel("SO", "PI", "CU")
 
-mot_cal_plot <- cal_mots %>% 
-  group_by(year, species) %>% 
+mot_cal_plot <- cal_mots |> 
+  group_by(year, species) |> 
   summarize(mean_abundance = mean(all_lice),
             sd = sd(all_lice),
             n = n(),
-            se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN=',n)) %>% 
+            se = sd/sqrt(n)) |> 
+    mutate(label = paste0(year,'\nN=',n)) |> 
   ggplot(aes(x = year, y = mean_abundance, fill = species)) +
   geom_bar(stat = "identity", position=position_dodge()) +
   geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), position = position_dodge(0.9), width = 0.2) +
@@ -617,31 +680,31 @@ mot_cal_plot
 
 ```{r,  fig.cap = "The mean abundance (± SE) of motile _Lepeophtheirus salmonis_ sea lice infecting juvenile salmon in 2022 compared to our time series"}
 # Leps only
-lep_motile_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") %>% 
+lep_motile_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") |> 
   filter(region == "DI",
-         louse_species == "motile_lep") %>% 
-  mutate(year = year(survey_date)) %>% 
+         louse_species == "motile_lep") |> 
+  mutate(year = year(survey_date)) |> 
   select(year, survey_date, site_id, species, louse_species, n_lice)
 
-current_mot_leps <- read_sheet(field_data_url, sheet = "sealice_field_data") %>% 
-  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) %>% 
-  mutate(year = year(survey_date)) %>% 
-  select(year, site_id, survey_date, species, cam, caf, cgf,lam, laf, lgf) %>% 
-  mutate(n_lice = lam + laf + lgf) %>% 
+current_mot_leps <- read_sheet(field_data_url, sheet = "sealice_field_data") |> 
+  left_join(ss_fish_2022, by = c('seine_id', 'ufn')) |> 
+  mutate(year = year(survey_date)) |> 
+  select(year, site_id, survey_date, species, cam, caf, cgf,lam, laf, lgf) |> 
+  mutate(n_lice = lam + laf + lgf) |> 
   select(year, site_id, survey_date, species, n_lice)
 
 mot_leps <- bind_rows(lep_motile_ts, current_mot_leps)
 
-mot_leps$species <- mot_leps$species %>% 
+mot_leps$species <- mot_leps$species |> 
   fct_relevel("SO", "PI", "CU")
 
-mot_leps_plot <- mot_leps %>% 
-  group_by(year, species) %>% 
+mot_leps_plot <- mot_leps |> 
+  group_by(year, species) |> 
   summarize(mean_abundance = mean(n_lice),
             sd = sd(n_lice),
             n = n(),
-            se = sd/sqrt(n)) %>% 
-    mutate(label = paste0(year,'\nN=',n)) %>% 
+            se = sd/sqrt(n)) |> 
+    mutate(label = paste0(year,'\nN=',n)) |> 
   ggplot(aes(x = year, y = mean_abundance, fill = species)) +
   geom_bar(stat = "identity", position=position_dodge()) +
   geom_errorbar(aes(ymin = mean_abundance - se, ymax = mean_abundance + se), width = 0.2, position=position_dodge(0.9)) +
