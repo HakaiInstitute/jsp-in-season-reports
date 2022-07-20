@@ -3,13 +3,13 @@ library(tidyverse)
 library(lubridate)
 library(here)
 
+# Reminder: Change file paths to save to current year folder
+# Run this line independently, check console for URL, and authorize
 client <- hakaiApi::Client$new()
 
 current_year <- year(Sys.Date())
 
 # Get CTD data from EIMS database using R API
-
-# Run this line independently, check console for URL, and authorize
 
 qu39_all <- 
   client$get(paste0(client$api_root,
@@ -64,7 +64,7 @@ qu39_this_year <- qu39_all %>%
     mean_salinity = mean(salinity, na.rm = T)
   )
 
-write_csv(qu39_this_year, here::here("2021_in_season_report", "data", "qu39_this_year.csv"))
+write_csv(qu39_this_year, here::here("2022_in_season_report", "data", "qu39_this_year.csv"))
 
 ## SST ANOMALY DATA
 
@@ -118,7 +118,20 @@ qu39_temp_anomaly_data <-
     yday = (151 + 158) / 2,
     predicted_mean_temp = predict(temp.lo_qu39, (151 + 158) / 2),
     mean_temp = predict(temp.lo_qu39, (151 + 158) / 2)
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (158 + 166) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (158 + 166) / 2),
+    mean_temp = predict(temp.lo_qu39, (158 + 166) / 2)
+  ) %>% 
+  add_row(
+    station = "QU39",
+    yday = (166 + 173) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (166 + 173) / 2),
+    mean_temp = predict(temp.lo_qu39, (166 + 173) / 2)
   )
+  
 
 
 # Create min and max for any given day of the time series
@@ -134,9 +147,9 @@ qu39_min_max <- qu39_all %>%
 
 average_temps <- qu39_average
 
-write_csv(average_temps, here::here("2021_in_season_report", "data", "average_temps.csv"))
+write_csv(average_temps, here::here("2022_in_season_report", "data", "average_temps.csv"))
 
 temperature_anomaly_data <- qu39_temp_anomaly_data
 
 write_csv(temperature_anomaly_data,
-          here::here("2021_in_season_report", "data", "temperature_anomaly_data.csv"))
+          here::here("2022_in_season_report", "data", "temperature_anomaly_data.csv"))

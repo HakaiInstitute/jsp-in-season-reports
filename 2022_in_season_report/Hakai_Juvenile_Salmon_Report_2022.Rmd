@@ -402,18 +402,23 @@ current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") |>
          inferred_leps = unk * ratio,
          inferred_cal = unk * (1-ratio)) |>
 # Remove intermediate cols
-  select(survey_date, seine_id, ufn, species,lep_cope, lam, laf, lgf, cal_cope, cam, caf, cgf, inferred_leps,
-         inferred_cal) |> 
+  select(survey_date, seine_id, ufn, species,lep_cope, lam, laf, lgf, cal_cope,
+         cam, caf, cgf, inferred_leps, inferred_cal) |> 
 # Make 1 row an observation of one louse
   pivot_longer(cols = lep_cope:inferred_cal, names_to = "louse_species", values_to = "count") |> 
 # Assign stages
   mutate(life_stage = if_else(louse_species %in% c("cal_cope", "lep_cope", "inferred_leps", "inferred_cal"), "attached", "motile"),
 # Assign species
-         louse_species = if_else(louse_species %in% c("cal_cope", "inferred_cal", "cam", "caf", "cgf"), "Caligus clemensi", "Lepeophtheirus salmonis")) |> 
+         louse_species = if_else(louse_species %in% c("cal_cope", 
+                                                      "inferred_cal", "cam",
+                                                      "caf", "cgf"), 
+                                 "Caligus clemensi",
+                                 "Lepeophtheirus salmonis")) |> 
 # Total up all sea lice by fish, louse species and lifestage
   group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
   summarize(count = sum(count)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(origin = "current_lice")
 
 # import time series attached stage lice
 
@@ -432,10 +437,28 @@ sealice_lab_fs <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp
     louse_species = if_else(louse_species %in% c("lep_cop", "lep_cunifer_cop", "lep_chal_a", "lep_chal_b", "lep_pa_m_1", "lep_pa_m_2", "lep_pa_f_1", "lep_pa_f_2", "lep_pa_unid", "lep_a_m", "lep_a_f", "lep_grav_f"), "Lepeophtheirus salmonis", "Caligus clemensi")) |> 
   group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
   summarize(count = sum(count)) |> 
-  ungroup()
+  ungroup() |> 
+#Remove motile sealice because those observations are included in lab_mots_ts
+  filter(life_stage == "attached") |> 
+  mutate(origin = "sealice_lab_fs")
 
-# second, read in field lice data
-#TODO: Figure out why 2020 and 2021 isn't appearing
+# second, read in time series lice data
+#need to attach seine number first
+seine_ids <- catch_data |> 
+  select(seine_id, ufn)
+lab_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") |> 
+  filter(region == "DI", 
+         year == year(survey_date),
+         !louse_species == "all_lice") |> 
+  mutate(louse_species = if_else(louse_species == "motile_caligus", "Caligus clemensi", "Lepeophtheirus salmonis" ),
+         life_stage = "motile") |> 
+  left_join(seine_ids, by = 'ufn') |> 
+  select(survey_date, seine_id, species, ufn, louse_species, life_stage, 
+         count = n_lice) |> 
+  mutate(origin = "lab_mots_ts")
+
+
+# Third read in the field data to pull out 
 sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/raw_data/sample_results/sealice/sealice_field.csv") |> 
 # Join to catch data just by ufn
   left_join(catch_data, by = 'ufn') |>
@@ -460,34 +483,44 @@ sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-
   mutate(life_stage = if_else(louse_species %in% c("cal_cope_field", "lep_cope_field", "inferred_leps", "inferred_cal"), "attached", "motile"),
          louse_species = if_else(louse_species %in% c("cal_cope_field", "cal_mot_field", "inferred_cal", "cgf_field"), "Caligus clemensi", "Lepeophtheirus salmonis"))|> 
   group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
-  summarize(count = sum(count))
+  summarize(count = sum(count)) |> 
+  filter(life_stage == "attached") |> 
+  mutate(origin = "sealice_field")
 
 #TODO: Include 2020 and 2021 motile counts from the lab
 #TODO: combine lab and field observations where they exist with preference for lab observations 
-lab_mots_ts <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/sealice_time_series.csv") |> 
-  filter(region == "DI", 
-         year == year(survey_date)) |> 
-  select(year, survey_date, species, motile_lice = n_lice)
 
 #TODO: I need to recalculate just how many of each species were loused for each type of stage in each year
 
-hosts_observed <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
-  drop_na(count) |>
-  mutate(year = year(survey_date)) |>
-  distinct(year, species, ufn) |>
-  group_by(year, species) |>
-  summarize(n = n()) |>
-  ungroup()
+# hosts_observed <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
+#   drop_na(count) |>
+#   mutate(year = year(survey_date)) |>
+#   distinct(year, species, ufn) |>
+#   group_by(year, species) |>
+#   summarize(n = n()) |>
+#   ungroup()
 
-sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
+#check for duplicates in fs an field data
+dups <- bind_rows(sealice_lab_fs, sealice_field) |> 
+  mutate(qc_check = paste(ufn, louse_species, life_stage)) |> 
+  group_by(qc_check) |> 
+  filter(n() > 1) |> 
+  ungroup() |> 
+  distinct(ufn) 
+
+dups <- dups$ufn
+  
+sealice_field <- sealice_field |> 
+  filter(!ufn %in% dups)
+
+sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field, lab_mots_ts) |>
   filter(!species == "CO") |> 
   drop_na(count) |>
   mutate(year = year(survey_date)) |> 
-  ungroup() |> 
+  ungroup()|>
   dplyr::group_by(year, species, louse_species, life_stage) |> 
   dplyr::summarize(mean_abundance = mean(count, na.rm = TRUE),
-            sd = sd(count, na.rm = TRUE)) |> 
-  left_join(hosts_observed, by = c('year', 'species')) 
+            sd = sd(count, na.rm = TRUE)) 
 
 sealice_df$species <- factor(sealice_df$species) |> 
    fct_relevel("SO", "PI", "CU")
@@ -495,10 +528,10 @@ sealice_df$species <- factor(sealice_df$species) |>
 ggplot(sealice_df, aes(x = factor(year), y = mean_abundance, fill = species)) +
   geom_bar(stat = "identity", 
            position = position_dodge()) +
-  geom_errorbar(aes(ymin = if_else(mean_abundance - se < 0, 0,
-                                   mean_abundance - se), 
-                    ymax = mean_abundance + se, width = 0.2),
-                position = position_dodge(0.9)) +
+  #geom_errorbar(aes(ymin = if_else(mean_abundance - se < 0, 0,
+   #                                mean_abundance - se), 
+    #                ymax = mean_abundance + se, width = 0.2),
+     #           position = position_dodge(0.9)) +
   facet_grid(louse_species ~ life_stage, scales = "free") +
   scale_fill_manual(values = hakai_palette("hakai_salmon")) +
   xlab("Year") +
