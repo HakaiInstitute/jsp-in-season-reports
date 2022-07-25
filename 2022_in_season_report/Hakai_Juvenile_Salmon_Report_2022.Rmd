@@ -362,18 +362,20 @@ di_length_hist_plot
 
 ## Parasite Loads
 
-In 2022 we resumed enumerating sea lice in the field using hand lenses to identify both attached (juvenile) and motile (adult) sea lice (Krkosek et al. 2005), after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes 2020 and 2021 for all species of salmon. We have also historically prioritized counting sea lice on sockeye, and given the low number of sockeye captured in 2022, here we report sea lice data for chum salmon only for this year thus far. We present data for abundance and prevalence of attached + motile lice for 2017, 2019 and 2022, and motile lice only for 2015-2022. 
+In 2022 we resumed enumerating both attached and motile sea lice in the field using hand lenses (Krkosek et al. 2005) after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes some years and species of salmon. Here we present the abundance and prevalence of attached stage lice in 2015, 2017, 2018, 2019, and 2022. Our time series for parasite loads is complete for motile sealice on sockeye, pink and chum spanning 2015-2022. 
+
+Note that species identification of attached chalimus sea lice stages was not conducted in the field. Instead species proportions of chalimus staged were inferred based on the ratio of species in the copepodite and motile stages in each year.
 
 ### Definitions[^1] 
 
 _Abundance_: The total number of individuals of a particular parasite species in a sample of hosts ÷ Total number of individuals of the host species in the sample (Average number of lice per fish).
 
-_Prevalence_: Number of individuals of a host species infected with a particular parasite species ÷ Number of hosts examined (Proportion of fish infeccted with lice).
+_Prevalence_: Number of individuals of a host species infected with a particular parasite species and louse life stage ÷ Number of hosts examined for that particular louse life stage (Proportion of fish infected with lice).
 
 [^1]: Margolis, L., Esch, G.W., Holmes, J.C., Kuris, A.M. and Schad, G.A. (1982). The use of ecological terms in parasitology: report of an ad hoc committee of the American Society of Parasitologists. J. Parasitol. 68:131–133.
 
 
-```{r wrangle attached stage data, include = FALSE}
+```{r sealice abundance, include = TRUE}
 
 # In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
 
@@ -521,16 +523,6 @@ sealice_field <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-
   mutate(origin = "sealice_field") |> 
   ungroup()
 
-#TODO: I need to recalculate just how many of each species were loused for each type of stage in each year
-
-# hosts_observed <- bind_rows(sealice_lab_fs, current_lice, sealice_field) |>
-#   drop_na(count) |>
-#   mutate(year = year(survey_date)) |>
-#   distinct(year, species, ufn) |>
-#   group_by(year, species) |>
-#   summarize(n = n()) |>
-#   ungroup()
-
 #check for duplicates in fs an field data
 dups <- bind_rows(sealice_lab_fs, sealice_field) |> 
   mutate(qc_check = paste(ufn, louse_species, life_stage)) |> 
@@ -554,7 +546,6 @@ sealice_field_n <- sealice_field |>
          n_hosts_motile = 0,
          origin = "sealice_field")
 
-#TODO: confirm sealist host observations matches with sea lice protocol narratives
 hosts <- bind_rows(current_lice_n, sealice_lab_fs_n, lab_mots_ts_n, sealice_field_n) |> 
   group_by(species, year) |> 
   summarize(n_hosts_attached = sum(n_hosts_attached),
@@ -563,7 +554,6 @@ hosts <- bind_rows(current_lice_n, sealice_lab_fs_n, lab_mots_ts_n, sealice_fiel
                values_to = "n_hosts") |> 
   mutate(life_stage = if_else(life_stage == "n_hosts_motile", "motile", "attached"))
   
-
 sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field, lab_mots_ts) |>
   filter(!species == "CO") |> 
   drop_na(count) |>
@@ -576,26 +566,39 @@ sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field, lab_mots_ts
                    se = sd/sqrt(n_hosts),
                    n_hosts = n_hosts) |> 
   distinct() |> 
-  filter(!n_hosts < 3)
+  filter(!n_hosts < 3) |> 
+  mutate(life_stage = if_else(life_stage == "motile", "Motile", "Attached"))
+
+sealice_df$species <- recode(sealice_df$species, SO = "Sockeye",
+                                  PI = "Pink", CU = "Chum")
 
 sealice_df$species <- factor(sealice_df$species) |> 
-   fct_relevel("SO", "PI", "CU")
+   fct_relevel("Sockeye", "Pink", "Chum")
+```
 
-ggplot(sealice_df, aes(x = factor(year), y = mean_abundance, fill = species)) +
-  geom_bar(stat = "identity", 
-           position = position_dodge()) +
+```{r abundance plot, fig.cap= "The mean abundance of sea lice in the Discovery Islands, BC.",fig.dim=c(8, 8)}
+
+ggplot(sealice_df, aes(x = year, y = mean_abundance, fill = species)) +
+  geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
   geom_errorbar(aes(ymin = if_else(mean_abundance - se < 0, 0,
                                    mean_abundance - se), 
-                    ymax = mean_abundance + se, width = 0.2),
-                position = position_dodge(0.9)) +
+                    ymax = mean_abundance + se),
+                position = position_dodge2(preserve = "single")) +
   facet_grid(life_stage ~ louse_species, scales = "free") +
   scale_fill_manual(values = hakai_palette("hakai_salmon")) +
   xlab("Year") +
-  ylab("Mean Abundance")
-  
+  ylab("Mean Abundance") +
+  theme(legend.position = "bottom")+ 
+  scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022)) +
+  theme(panel.grid.major.x = element_line(colour = "grey", size = 0.1),
+        panel.grid.major.y = element_line(colour = "grey", size = 0.1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  theme(legend.title=element_blank())
+
+ggsave(here("2022_in_season_report","figs", "abund_attached_mot.png"))
 ```
 
-```{r sealice prevalence}
+```{r sealice prevalence, include = TRUE}
 sealice_prev_df_leps <- bind_rows(current_lice, sealice_lab_fs, sealice_field,
                              lab_mots_ts) |> 
   filter(louse_species == "Lepeophtheirus salmonis") |> 
@@ -630,29 +633,46 @@ sealice_prev_df_cal <- bind_rows(current_lice, sealice_lab_fs, sealice_field,
             sd = sd(prop_infected),
             n = n(),
             se = sd / sqrt(n)) |> 
-  filter(n > 1)
+  filter(n > 1) |> 
+  ungroup()
 
 sealice_prev_df <- bind_rows(sealice_prev_df_cal, sealice_prev_df_leps) |> 
-  filter(!species == "CO")
+  filter(!species == "CO") |> 
+  mutate(life_stage = if_else(life_stage == "motile", "Motile", "Attached")) |> 
+  group_by(year, louse_species, life_stage) |> 
+  mutate(width = 0.1 * n())
   
-sealice_prev_df$species <- factor(sealice_prev_df$species) |> 
-   fct_relevel("SO", "PI", "CU")
+sealice_prev_df$species <- recode(sealice_prev_df$species, SO = "Sockeye",
+                                  PI = "Pink", CU = "Chum")
 
+sealice_prev_df$species <- factor(sealice_prev_df$species) |> 
+   fct_relevel(
+     "Sockeye", "Pink", "Chum")
+```
+
+```{r prevalence plot, fig.cap = "The mean prevalence of sea lice in the Discovery Islands, BC. ", fig.dim=c(7, 7)}
 ggplot(sealice_prev_df, aes(x = year, y = mean_prev, fill = species)) +
-   geom_bar(stat = "identity", 
-           position = position_dodge()) +
+   geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
   geom_errorbar(aes(ymin = if_else(mean_prev - se < 0, 0,
                                    mean_prev - se), 
-                    ymax = mean_prev + se, width = 0.2),
-                position = position_dodge(0.9)) +
-  facet_grid(life_stage ~ louse_species, scales = "free") +
+                    ymax = mean_prev + se),
+                position = position_dodge2(preserve = "single")) +
+  facet_grid(life_stage ~ louse_species) +
   scale_fill_manual(values = hakai_palette("hakai_salmon")) +
   xlab("Year") +
-  ylab("Mean Prevalence")
+  ylab("Mean Prevalence") +
+  theme(legend.position = "bottom") +
+  scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022)) +
+  theme(panel.grid.major.x = element_line(colour = "grey", size = 0.1),
+        panel.grid.major.y = element_line(colour = "grey", size = 0.1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  theme(legend.title=element_blank())
+
+ggsave(here("2022_in_season_report", "figs", "prev_attached_mot.png"))
+
 ```
 
 
-\newpage
 
 ## Ocean Temperatures
 
@@ -684,8 +704,9 @@ plot
 ```
 
 ## Highlights
-
-
+ * In 2022 we observed the lowest catch intensity of sockeye salmon in our time series. The date of first sockeye capture was the latest in the time series, though low abundance of sockeye likely affected catchability and our estimate of migration timing.
+ * Sea lice abundance and prevalence were mostly within the time series ranges. Confidence in counts of sea lice on sockeye is low due to small sample sizes.
+ * Juvenile salmon experienced colder than average ocean temperatures during the early phase of their migration.
 
 ## References
 
