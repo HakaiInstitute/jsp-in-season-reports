@@ -130,6 +130,12 @@ qu39_temp_anomaly_data <-
     yday = (166 + 173) / 2,
     predicted_mean_temp = predict(temp.lo_qu39, (166 + 173) / 2),
     mean_temp = predict(temp.lo_qu39, (166 + 173) / 2)
+  ) |> 
+  add_row(
+    station = "QU39",
+    yday = (200 + 207) / 2,
+    predicted_mean_temp = predict(temp.lo_qu39, (200 + 207) / 2),
+    mean_temp = predict(temp.lo_qu39, (200 + 207) / 2)
   )
   
 

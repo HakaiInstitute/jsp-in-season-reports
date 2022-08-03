@@ -109,7 +109,7 @@ n_seasons <- max(year(ss_2022$survey_date) - 2015) + 1
 
 ## Aim 
 
-To provide a rapid interim summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
+To provide a rapid end of season summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
 
 ## Background
 
@@ -134,18 +134,23 @@ The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. 
 * Catch Statistics
 * Lengths
 * Parasite Loads
+* Ocean Temperatures
 
 For questions/comments please contact brett.johnson@hakai.org and b.hunt@oceans.ubc.ca
 
 The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance. The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
 
+```{r fig.cap = "Locations of seining and oceanographic stations surveyed in 2022.", out.width="464pt", out.height="360pt"}
 
-![Salmon seining and oceanographic sampling locations in the Discovery Islands in 2022.](./figs/map_2022.jpeg)
+knitr::include_graphics(here::here("2022_in_season_report", "figs", "map_2022.jpeg"))
+
+
+```
 \newpage
 
-# Migrtation Timing
+# Migration Timing
 
-We have captured very few sockeye so far this season, so it is not feasible to calculate migration timing for sockeye as done in previous years.
+We captured very few sockeye in 2022, so it is not feasible to calculate migration timing for sockeye as done in previous years.
 
 Table 1. Summary of sampling events conducted in 2022 in the Discovery Islands and totals of sockeye, pink, and chum salmon caught. Note NA indicates the net was not set.
 
@@ -240,7 +245,7 @@ catch_intensity$species <- catch_intensity$species |>
 
 ## Species Proportion 
 
-```{r species_proportion, fig.cap = "Proportion of juvenile salmon species caught in the Discovery Islands from 2015-2022." }
+```{r species_proportion, fig.cap = "Proportion of juvenile salmon species and herring caught in the Discovery Islands from 2015-2022." }
 
 species_prop_2015_2021 <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/proportion.csv")
 
@@ -352,7 +357,8 @@ di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_l
   facet_grid(species~., labeller=labeller(species = spp_labels))+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
   scale_fill_manual(values = hakaiR::hakai_palette("Darjeeling1")) + 
-  coord_cartesian(ylim = c(50,170))
+  coord_cartesian(ylim = c(50,170)) +
+  labs(fill = "Year")
   
 di_length_hist_plot
 ```
@@ -377,7 +383,7 @@ _Prevalence_: Number of individuals of a host species infected with a particular
 
 ```{r sealice abundance, include = TRUE}
 
-# In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
+# In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anaesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
 
 # In 2018 we didn't do attached stage licing in the field on pink or chum. only 10 sockeye. So, do we have any attached stage lice data from the lab in 2018??? - No, it appears not
 
@@ -576,7 +582,7 @@ sealice_df$species <- factor(sealice_df$species) |>
    fct_relevel("Sockeye", "Pink", "Chum")
 ```
 
-```{r abundance plot, fig.cap= "The mean abundance of sea lice in the Discovery Islands, BC.",fig.dim=c(8, 8)}
+```{r abundance plot, fig.cap= "The mean abundance (+/- 1 SE) of sea lice in the Discovery Islands, BC.",fig.dim=c(7, 7)}
 
 ggplot(sealice_df, aes(x = year, y = mean_abundance, fill = species)) +
   geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
@@ -650,7 +656,7 @@ sealice_prev_df$species <- factor(sealice_prev_df$species) |>
      "Sockeye", "Pink", "Chum")
 ```
 
-```{r prevalence plot, fig.cap = "The mean prevalence of sea lice in the Discovery Islands, BC. ", fig.dim=c(7, 7)}
+```{r prevalence plot, fig.cap = "The mean prevalence (+/- 1 SE) of sea lice in the Discovery Islands, BC. ", fig.dim=c(7, 7)}
 ggplot(sealice_prev_df, aes(x = year, y = mean_prev, fill = species)) +
    geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
   geom_errorbar(aes(ymin = if_else(mean_prev - se < 0, 0,
@@ -704,7 +710,7 @@ plot
 ```
 
 ## Highlights
- * In 2022 we observed the lowest catch intensity of sockeye salmon in our time series. The date of first sockeye capture was the latest in the time series, though low abundance of sockeye likely affected catchability and our estimate of migration timing.
+ * In 2022 we observed the lowest catch intensity of sockeye salmon in our time series and the date of first sockeye capture was the latest in the time series. However, low abundance of sockeye affected catchability and our ability to accurately estimate migration timing.
  * Sea lice abundance and prevalence were mostly within the time series ranges. Confidence in counts of sea lice on sockeye is low due to small sample sizes.
  * Juvenile salmon experienced colder than average ocean temperatures during the early phase of their migration.
 
@@ -714,4 +720,4 @@ plot
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Johnson, B., Gan, J., Godwin, S., Bachen, K., van der Stap, T., Krkosek, M., Rogers, L. A., Portner, L., Janusson, C., & Hunt, B. P. V. (2017). Hakai Institute Juvenile Salmon Program Time Series. [Dataset] https://doi.org/10.21966/1.566666
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Krkošek, M., Morton, A., and Volpe, J.P. 2005b. Nonlethal ssessment of juvenile pink and chum salmon for parasitic sea lice infections and fish health. Trans. Am. Fish. Soc. 134(3): 711–716. doi:10.1577/T04-133.1.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Krkošek, M., Morton, A., and Volpe, J.P. 2005b. Nonlethal assessment of juvenile pink and chum salmon for parasitic sea lice infections and fish health. Trans. Am. Fish. Soc. 134(3): 711–716. doi:10.1577/T04-133.1.
