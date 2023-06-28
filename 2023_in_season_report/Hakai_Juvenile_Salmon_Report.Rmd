@@ -1,0 +1,629 @@
+---
+title: Juvenile salmon migration report; Discovery Islands
+output:
+  rmarkdown::pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: figure_opts.tex
+    latex_engine: xelatex
+sansfont: Times New Roman
+fontsize: 12pt
+
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{sectsty} \sectionfont{\centering \emph}
+---
+
+\begin{center}
+\large
+— Hakai Institute Juvenile Salmon Program 2023 —
+\end{center}
+
+
+```{r setup, include = FALSE}
+# Before running this code, search for the previous years text (ie. 2022) in figure captions and replace with the actual previous year ie. 2023. 
+
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE)
+library(tidyverse)
+library(lubridate)
+library(here)
+library(googlesheets4)
+library(ggridges)
+library(hakaiApi)
+library(hakaiR)
+options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
+theme_set(hakaiR::hakademic_theme(base_size = 17))
+
+# replace with current years URL to the field data google sheet
+field_data_url <- "https://docs.google.com/spreadsheets/d/1Y8Nw82hHSb_GDXYzwg5hKI34bYlFnkLsir_V_fGdVCw/edit#gid=0"
+
+# define current year to use as variable and label throughout
+current_year <- year(Sys.Date())
+  
+sites <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/tidy_data/sites.csv")
+
+# Define long form species names and regions
+spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "Discovery Islands")
+
+# Run ctd_data_import_and_wrangle.R 
+client <- hakaiApi::Client$new() # paste auth code in console
+```
+
+
+```{r, messages = FALSE, echo = FALSE, include = FALSE}
+  
+source(here(paste0(current_year, "_in_season_report"), "ctd_data_import_and_wrangle.R"))
+
+
+survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/survey_seines.csv") |> 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) |> 
+  left_join(select(sites,
+                   site_id,
+                   region))
+
+
+survey_seines_GH$sampling_week <-
+  recode_factor(
+    survey_seines_GH$sampling_week,
+    `18` = "May 5",
+    `19` = "May 12" ,
+    `20` = "May 19",
+    `21` = "May 26",
+    `22` = "June 2",
+    `23` = "June 9",
+    `24` = "June 16",
+    `25` = "June 23",
+    `26` = "June 30",
+    `27` = "July 6",
+    `28` = "July 13",
+  )
+
+# Run first line independently so you can interactively enter authentication url in the console
+
+surveys_current <- read_sheet(field_data_url, sheet = "survey_data") |> 
+  drop_na(survey_id) |> 
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) #lumps weeks correctly
+
+#execute line below assuming the first option in the console prompt is the correct gmail address with permissions to the JSP field data googlesheet
+1
+
+surveys_current$sampling_week <- recode_factor(surveys_current$sampling_week, 
+                                           `18` = "May 5",
+                                           `19` = "May 12" ,
+                                           `20` = "May 19", 
+                                           `21` = "May 26",
+                                           `22` = "June 2",
+                                           `23` = "June 9", 
+                                           `24` = "June 16", 
+                                           `25` = "June 23",
+                                           `26` = "June 30", 
+                                           `27` = "July 6", 
+                                           `28` = "July 13")
+
+seines_current <- read_sheet(field_data_url, sheet = "seine_data") |> 
+  drop_na(seine_id)
+
+ss_current <- left_join(surveys_current, seines_current, by = "survey_id") |> 
+  left_join(select(sites, site_id, zone), by = "site_id") |> 
+  mutate(year = year(survey_date)) |> 
+  drop_na(survey_id)
+
+fish_field_current <- read_sheet(field_data_url, sheet = "fish_field_data") |> 
+  drop_na(ufn) |> 
+  mutate(region = "DI")
+
+ss_fish_current <- left_join(fish_field_current, ss_current)
+
+n_seasons <- max(year(ss_current$survey_date) - 2015) + 1
+
+```
+
+## Aim 
+
+To provide a rapid end of season summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
+
+## Background
+
+The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. For a complete background including methods see [Hunt et al. 2018](https://npafc.org/wp-content/uploads/Public-Documents/2018/1788Canada.pdf). The program operates in the Discovery Islands (Figure 1) and thus provides information on the health of juvenile salmon after passage through: 
+
+1) Strait of Georgia – stratified high plankton biomass zone; and 
+
+2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of, historically, high potential for wild-farmed fish interactions.
+
+## Program Objectives
+
+1) Determine migration timing and relative abundance; 
+
+2) Map migration habitat - oceanographic conditions along the migration route;
+
+3) Understand the dynamics of the plankton food-webs that underpin juvenile salmon growth and health;
+
+4) Understand parasite and pathogen infection dynamics and their impact on juvenile salmon growth and health.
+
+## Key Parameters Reported
+
+* Catch Statistics
+* Lengths
+* Parasite Loads
+* Ocean Temperatures
+
+For questions/comments please contact brett.johnson@hakai.org and b.hunt@oceans.ubc.ca
+
+The following plots are subject to change as the underlying data are preliminary and subject to further quality assurance. The Hakai Institute embraces an "Open Science Policy"; to that end you can access the time series data used in this report at http://dx.doi.org/10.21966/1.566666.
+
+```{r fig.cap = "Locations of seining and oceanographic stations surveyed in 2023.", out.width="464pt", out.height="360pt"}
+
+knitr::include_graphics(here::here(paste0(current_year, "_in_season_report"), "figs", "map.jpeg"))
+
+
+```
+\newpage
+
+# Migration Timing
+
+
+```{r fig.cap = "Dates, sites, and catches of seining operations in 2023. Note NA indicates the seine was not set."}
+ss_current |> 
+  select(`Survey Date`= survey_date, `Site ID` = site_id, Site = site_name, Sockeye = so_total, Pink = pi_total, Chum = cu_total) |> 
+  knitr::kable()
+```
+
+
+```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2023 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2022.", include = TRUE}
+df <- select(ss_current, date = survey_date, so_total) |> 
+  mutate(group = as.character(current_year))
+
+dfall <- select(survey_seines_GH, survey_date, so_total) |> 
+  group_by(survey_date) |> 
+  summarize(so_total = mean(so_total)) |> 
+   mutate(year = current_year, # This is a trick to get the averages to compute for the same day between years
+         month = month(survey_date),
+         day = day(survey_date),
+         date = as_date(paste(year,month,day,  sep = "-"))) |> 
+  group_by(date) |> 
+  summarize(so_total = mean(so_total)) |> 
+  mutate(group = "2015-2022") |> 
+  ungroup()
+
+ss_all <- bind_rows(df,dfall)
+
+ss_all |> 
+  mutate(seven_avg= zoo::rollmean(so_total, 5,
+                             fill=NA)) |>
+   ggplot(aes(x=date,
+             y=so_total)) +
+  geom_bar(aes(fill = group), alpha = .35, stat = "identity", position=position_dodge())+
+  geom_line(aes(y = seven_avg, group = group, colour = group), 
+            size = .75) +
+  ylab("Sockeye catch") +
+  xlab("Date") +
+  theme(legend.title=element_blank()) +
+  theme(legend.justification=c(1,1), legend.position=c(1,1)) 
+  
+
+```
+
+## Catch Intensity 
+
+```{r catch_intensity, fig.cap = "The catch intensity (average number of species i when i > 0 and when sockeye were also caught) of sockeye, pink, and chum salmon in the Discovery Islands. Numbers under each bar indicate the number of seines in which sockeye were caught, and error bars indicate 1 standard error."}
+
+catch_intensity_current <- ss_current |>
+  rename("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total") |>
+  # remove seines that did not catch any sockeye, even if they caught other spp
+  filter(Sockeye > 0) |> 
+  select(year, Sockeye, Pink, Chum) |> 
+  gather(key = species, value = catch, - year) 
+
+# |> 
+#   # Filter out catches where no pink and chum were caught, so that catch intensity is consistent for each species. Ie. catch intensity for sockeye is the average number of sockeye when catch of sockeye is > 0, catch intensity of pink is the average number of pink caught when > 1 pink was caught, and so on for chum as well.
+#   filter(catch > 0)
+
+catch_intensity_current <- catch_intensity_current |> 
+  group_by(year, species) |> 
+  summarize(mean_catch = mean(catch),
+            sd = sd(catch),
+            n = n())|> 
+  mutate(se = sd / sqrt(n),
+         lower_ci = qt(1 - (0.05 / 2), n - 1) * se,
+         upper_ci = qt(1 - (0.05 / 2), n - 1) * se) |> 
+  ungroup() |> 
+  mutate_if(is.numeric, round, 1)
+
+
+# Time series catch intensity
+catch_intensity <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/catch_intensity.csv")
+
+catch_intensity <- bind_rows(catch_intensity, catch_intensity_current)
+
+catch_intensity$species <- catch_intensity$species |>
+  fct_relevel("Sockeye", "Pink", "Chum")
+
+(ggplot(catch_intensity, aes(x = factor(year), y = mean_catch, fill = species)) +
+  geom_bar(colour = "black",  stat="identity", position=position_dodge()) +
+  geom_errorbar(aes(ymin = mean_catch - se, ymax = mean_catch + se),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  geom_text(aes(y = 0.0, label = paste0(n)), size = 3.15, vjust = 1.25,
+                position = position_dodge(0.9)) +
+  xlab("Year") +
+  ylab("Catch Intensity") +
+  labs(fill = "Species") +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))) +
+  theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=16))
+```
+
+## Species Proportion 
+
+```{r species_proportion, fig.cap = "Proportion of juvenile salmon species and herring caught in the Discovery Islands from 2015-2023." }
+
+species_prop_2015_2022 <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/proportion.csv")
+
+
+species_prop_current <- ss_current |>
+ select(
+    survey_date,
+    seine_id,
+    so_total,
+    pi_total,
+    cu_total,
+    co_total,
+    he_total
+  ) |>
+  # Next I remove instances when no sockeye were caught. I'm doing this because in 2015 and 2016 we only enumerated catches in which we caught sockeye, whereas in 2017 and 2018 we enumerated all seines. So to reduce the bias introduced from the field method i filter the comparison down to where field methods are comparable
+  filter(so_total > 0) |>
+  # remove instances when not all species were enumerated by droping rows with NA
+  drop_na() |>
+  mutate(year = year(survey_date)) |>
+  gather(
+    `so_total`,
+    `pi_total`,
+    `cu_total`,
+    `co_total`,
+    `he_total`,
+    key = "species",
+    value = "n"
+  ) |>
+  drop_na()
+
+spp_prop_expanded <-
+  species_prop_current[rep(row.names(species_prop_current), species_prop_current$n), 1:5] |>
+  mutate(yday = yday(survey_date), year = year(survey_date))
+
+species_prop_current <- spp_prop_expanded |>
+  group_by(year, species) |>
+  summarize(n = n()) |>
+  mutate(proportion = n / sum(n)) |>
+  ungroup()
+
+# Combined proportions from 2015 - current, Discovery Islands
+species_prop_total <- bind_rows(species_prop_2015_2022, species_prop_current)
+
+species_prop_total$species <- species_prop_total$species |> 
+  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total") |> 
+  fct_recode("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total", "Coho" = "co_total",
+             "Herring" = "he_total")
+
+# Plotting this in a stacked bar graph: 
+species_prop_total_graph <-  
+  ggplot(data = species_prop_total, aes(x = year, y = proportion, fill = species)) +
+      geom_bar(colour = "black", stat="identity", position = 'stack') +
+      xlab("Year") +
+      ylab("Proportion") +
+      scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+      labs(fill = "Species") +
+      scale_x_continuous(n.breaks = n_seasons)
+  
+  
+species_prop_total_graph +
+  theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=16))
+```
+
+## Fish lengths
+
+```{r fish lengths, fig.cap = "Fork-length boxplots of juvenile salmon in the Discovery Islands in 2023 grouped by week, and represented by the middle day of each week, compared to all lengths from 2015-2022."}
+
+length_histo <-
+  read_csv(
+    "https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/length_histo.csv"
+  ) |>
+  mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7))
+
+length_histo$sampling_week <- recode_factor(length_histo$sampling_week, 
+                                           `18` = "May 5",
+                                           `19` = "May 12" ,
+                                           `20` = "May 19", 
+                                           `21` = "May 26",
+                                           `22` = "June 2",
+                                           `23` = "June 9", 
+                                           `24` = "June 16", 
+                                           `25` = "June 23",
+                                           `26` = "June 30", 
+                                           `27` = "July 6", 
+                                           `28` = "July 13")
+  
+annual_di_length_histo <- length_histo |> 
+  select(sampling_week, survey_date, region, species, fork_length) |> 
+  filter(species %in% c("SO", "PI", "CU"),
+         sampling_week %in% c("May 19", "May 26", "June 2", "June 9", "June 16", "June 23", "June 30", "July 6")) |> 
+  mutate(year = "2015-2022",
+         fork_length = as.numeric(fork_length))
+
+di_length_histo_current <- ss_fish_current |> 
+  select(sampling_week, survey_date, region, species, fork_length = fork_length_field) |> 
+  filter(species %in% c("SO", "PI", "CU"), region == "DI") |> 
+  filter(fork_length != "NA") |> 
+  mutate(year = as.character(current_year),
+         fork_length = as.numeric(fork_length))
+
+di_length_histo <- bind_rows(di_length_histo_current, annual_di_length_histo)
+
+di_length_hist_plot <- ggplot(di_length_histo, aes(x = sampling_week, y = fork_length, fill = year)) +
+  geom_boxplot()+
+  ylab("Fork Length (mm)")+
+  xlab("Date")+
+  theme(legend.text = element_text(colour="black", size = 12)) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold")) +
+  facet_grid(species~., labeller=labeller(species = spp_labels))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  scale_fill_manual(values = hakaiR::hakai_palette("Darjeeling1")) + 
+  coord_cartesian(ylim = c(50,170)) +
+  labs(fill = "Year")
+  
+di_length_hist_plot
+```
+
+\newpage
+
+
+## Parasite Loads
+
+In 2023 we resumed enumerating both attached and motile sea lice in the field using hand lenses (Krkosek et al. 2005) after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes some years and species of salmon. Here we present the abundance and prevalence of attached stage lice in 2015, 2017, 2018, 2019, and 2023. Our time series for parasite loads is complete for motile sealice on sockeye, pink and chum spanning 2015-2023. 
+
+Note that species identification of attached chalimus sea lice stages was not conducted in the field. Instead species proportions of chalimus staged were inferred based on the ratio of species in the copepodite and motile stages in each year.
+
+### Definitions[^1] 
+
+_Abundance_: The total number of individuals of a particular parasite species in a sample of hosts ÷ Total number of individuals of the host species in the sample (Average number of lice per fish).
+
+_Prevalence_: Number of individuals of a host species infected with a particular parasite species and louse life stage ÷ Number of hosts examined for that particular louse life stage (Proportion of fish infected with lice).
+
+[^1]: Margolis, L., Esch, G.W., Holmes, J.C., Kuris, A.M. and Schad, G.A. (1982). The use of ecological terms in parasitology: report of an ad hoc committee of the American Society of Parasitologists. J. Parasitol. 68:131–133.
+
+
+```{r sealice abundance, include = TRUE}
+
+# In 2017 we loused and retained 10 sockeye from the first set, and then conducted another set to louse 10 sockeye, 10 pink and 10 chum. Fish from the second set were anaesthetized, live-liced and released (unless we hadn't hit quota from the first set in which case some fish were retained)
+
+# In 2018 we didn't do attached stage licing in the field on pink or chum. only 10 sockeye. So, do we have any attached stage lice data from the lab in 2018??? - No, it appears not
+
+# In 2019 we field liced (including attached stages) 10 sockeye, and only 3 pink and 3 chum from every seine
+
+catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv", guess_max = 1600) |> left_join(sites, by = "site_id")
+
+# Define sites that can be compared between years
+consistent_sites <-  c("D07","D09","D22","D27","D10","D08","D34","D35",
+                       "D20","J03","J02","J09","J11")
+
+# build table for attached stage lice
+
+# Read in current year lice data
+current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") |> 
+# Join sea lice data to seine and survey_data by ufn and seine id
+  right_join(ss_fish_current, by = c('ufn', 'seine_id')) |> 
+# select relevant columns and all sea lice counts
+  select(survey_date, seine_id, ufn, species, lep_cope, lam, laf, lgf, cal_cope,
+         cam, caf, cgf,
+         chal_a_b, unid_cope, unid_chal) |> 
+# Get rid of fish that were not loused
+    drop_na() |> 
+# Calculate total leps and cals to get ratio to infer to chalimus stages
+  mutate(leps = lep_cope + lam + laf + lgf,
+         cal = cal_cope + cam + caf + cgf,
+         unk = chal_a_b + unid_cope + unid_chal,
+         ratio = sum(leps, na.rm = TRUE) / sum(cal, na.rm = TRUE),
+         inferred_leps = unk * ratio,
+         inferred_cal = unk * (1-ratio)) |>
+# Remove intermediate cols
+  select(survey_date, seine_id, ufn, species,lep_cope, lam, laf, lgf, cal_cope,
+         cam, caf, cgf, inferred_leps, inferred_cal) |> 
+# Make 1 row an observation of one louse
+  pivot_longer(cols = lep_cope:inferred_cal, names_to = "louse_species", 
+               values_to = "count") |> 
+# Assign stages
+  mutate(life_stage = if_else(louse_species %in% c("cal_cope", "lep_cope", "inferred_leps", "inferred_cal"), "attached", "motile"),
+# Assign species
+         louse_species = if_else(louse_species %in% c("cal_cope", 
+                                                      "inferred_cal", "cam",
+                                                      "caf", "cgf"), 
+                                 "Caligus clemensi",
+                                 "Lepeophtheirus salmonis")) |> 
+# Total up all sea lice by fish, louse species and lifestage
+  group_by(survey_date, seine_id, species, ufn, louse_species, life_stage) |> 
+  summarize(count = sum(count)) |> 
+  ungroup() |> 
+  mutate(origin = "current_lice") |> 
+  filter(species %in% c("SO", "PI", "CU")) |> 
+  mutate(year = year(survey_date))
+
+current_lice_n <- current_lice |> 
+  distinct(ufn, species) |> 
+  group_by(species) |> 
+  tally() |> 
+  mutate(year = current_year,
+         n_hosts_attached = n,
+         n_hosts_motile = n,
+         origin = "current_lice") |> 
+  group_by(species, year) |> 
+  summarize(n_hosts_attached = sum(n_hosts_attached),
+            n_hosts_motile = sum(n_hosts_motile)) |> 
+  pivot_longer(cols = n_hosts_attached:n_hosts_motile, names_to = "life_stage",
+               values_to = "n_hosts") |> 
+  mutate(life_stage = if_else(life_stage == "n_hosts_motile", "motile", "attached")) |> 
+  filter(!n_hosts < 3)
+
+current_lice <- current_lice |> 
+  ungroup() |> 
+  left_join(current_lice_n, by = c("year", "species", "life_stage"))
+
+current_lice_abundance <- current_lice |> 
+  dplyr::group_by(year, species, louse_species, life_stage) |> 
+  dplyr::summarize(mean_abundance = mean(count, na.rm = TRUE),
+                   sd = sd(count),
+                   se = sd/sqrt(n_hosts),
+                   n_hosts = n_hosts) |> 
+  distinct() |> 
+  filter(!n_hosts < 3) |> 
+  mutate(life_stage = if_else(life_stage == "motile", "Motile", "Attached"))
+
+# Import all stage sea lice time series
+sealice_df <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/tidy_data/sealice_all_stages_ts.csv") |> 
+  bind_rows(current_lice_abundance)
+
+
+sealice_df$species <- recode(sealice_df$species, SO = "Sockeye",
+                                  PI = "Pink", CU = "Chum")
+
+sealice_df$species <- factor(sealice_df$species) |> 
+   fct_relevel("Sockeye", "Pink", "Chum")
+
+```
+
+```{r abundance plot, fig.cap= "The mean abundance (+/- 1 SE) of sea lice in the Discovery Islands, BC.",fig.dim=c(7, 7)}
+
+ggplot(sealice_df, aes(x = year, y = mean_abundance, fill = species)) +
+  geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
+  geom_errorbar(aes(ymin = if_else(mean_abundance - se < 0, 0,
+                                   mean_abundance - se), 
+                    ymax = mean_abundance + se),
+                position = position_dodge2(preserve = "single")) +
+  facet_grid(life_stage ~ louse_species, scales = "free") +
+  scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+  xlab("Year") +
+  ylab("Mean Abundance") +
+  theme(legend.position = "bottom")+ 
+  scale_x_continuous(breaks=c(2015:current_year)) +
+  theme(panel.grid.major.x = element_line(colour = "grey", size = 0.1),
+        panel.grid.major.y = element_line(colour = "grey", size = 0.1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  theme(legend.title=element_blank())
+
+ggsave(here(paste0(current_year, "_in_season_report"),"figs", "abund_attached_mot.png"))
+```
+
+```{r sealice prevalence, include = TRUE}
+
+sealice_df_long <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/tidy_data/sealice_all_stages_ts_long.csv")
+
+sealice_prev_df_leps <- bind_rows(current_lice, sealice_df_long) |> 
+  filter(louse_species == "Lepeophtheirus salmonis") |> 
+  mutate(infected = if_else(count > 0, 1, 0)) |> 
+  group_by(survey_date, seine_id, species, louse_species, life_stage) |> 
+  summarize(n_hosts = n(),
+            n_infected = sum(infected)) |> 
+  ungroup() |> 
+  mutate(prop_infected = n_infected / n_hosts,
+         year = year(survey_date)) |> 
+  group_by(year, species, louse_species, life_stage) |> 
+  summarize(mean_prev = mean(prop_infected),
+            sd = sd(prop_infected),
+            n = n(),
+            se = sd / sqrt(n)) |> 
+  filter(n > 1)
+  
+
+  
+sealice_prev_df_cal <- bind_rows(current_lice, sealice_df_long) |> 
+  filter(louse_species == "Caligus clemensi") |> 
+  mutate(infected = if_else(count > 0, 1, 0)) |> 
+  group_by(survey_date, seine_id, species, louse_species, life_stage) |> 
+  summarize(n_hosts = n(),
+            n_infected = sum(infected)) |> 
+  ungroup() |> 
+  mutate(prop_infected = n_infected / n_hosts,
+         year = year(survey_date)) |> 
+  group_by(year, species, louse_species, life_stage) |> 
+  summarize(mean_prev = mean(prop_infected),
+            sd = sd(prop_infected),
+            n = n(),
+            se = sd / sqrt(n)) |> 
+  filter(n > 1) |> 
+  ungroup()
+
+sealice_prev_df <- bind_rows(sealice_prev_df_cal, sealice_prev_df_leps) |> 
+  filter(!species == "CO") |> 
+  mutate(life_stage = if_else(life_stage == "motile", "Motile", "Attached")) |> 
+  group_by(year, louse_species, life_stage) |> 
+  mutate(width = 0.1 * n())
+  
+sealice_prev_df$species <- recode(sealice_prev_df$species, SO = "Sockeye",
+                                  PI = "Pink", CU = "Chum")
+
+sealice_prev_df$species <- factor(sealice_prev_df$species) |> 
+   fct_relevel(
+     "Sockeye", "Pink", "Chum")
+```
+
+```{r prevalence plot, fig.cap = "The mean prevalence (+/- 1 SE) of sea lice in the Discovery Islands, BC. ", fig.dim=c(7, 7)}
+ggplot(sealice_prev_df, aes(x = year, y = mean_prev, fill = species)) +
+   geom_col(position = position_dodge2(width = 0.9, preserve = "single")) +
+  geom_errorbar(aes(ymin = if_else(mean_prev - se < 0, 0,
+                                   mean_prev - se), 
+                    ymax = mean_prev + se),
+                position = position_dodge2(preserve = "single")) +
+  facet_grid(life_stage ~ louse_species) +
+  scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+  xlab("Year") +
+  ylab("Mean Prevalence") +
+  theme(legend.position = "bottom") +
+  scale_x_continuous(breaks=c(2015:current_year)) +
+  theme(panel.grid.major.x = element_line(colour = "grey", size = 0.1),
+        panel.grid.major.y = element_line(colour = "grey", size = 0.1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  theme(legend.title=element_blank())
+
+ggsave(here(paste0(current_year, "_in_season_report"), "figs", "prev_attached_mot.png"))
+
+```
+
+
+
+## Ocean Temperatures
+
+```{r SST, fig.cap = "Ocean temperatures (top 30 m) at station QU39 in the northern Strait of Georgia between Quadra and Cortes Island. The solid black line is a LOESS regression based on temperatures from 2015-2022, representing the study period average. The shaded grey area is 1 SE of the LOESS regression. Blue areas represent temperatures from 2023 that are below average and red areas represent above-average temperatures."}
+
+plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
+      geom_point(aes(x = yday, y = predicted_mean_temp), size = 0.1)+
+     #geom_line(aes(x = yday, y = predicted_mean_temp)) +
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp >= predicted_mean_temp),
+                  aes(ymin = predicted_mean_temp, ymax = mean_temp),
+                  fill = "#d73027", size = 1) +
+      geom_ribbon(data = subset(temperature_anomaly_data,
+                                mean_temp <= predicted_mean_temp),
+                  aes(ymin = mean_temp, ymax = predicted_mean_temp),
+                  fill = "#4575b4", size = 1)+
+      geom_smooth(data = average_temps, aes(x = yday, y = mean_temp),
+                  size = 1, colour = 'black', se = T, span = .65) + 
+      geom_point(data = qu39_this_year, aes(x = yday, y = mean_temp), size = 0.75) +
+      scale_x_continuous(breaks = (c(32, 60, 91, 121, 152, 182, 213)),
+                         labels = (c("Feb", "Mar", "Apr", "May", "Jun",
+                                     "Jul", "Aug"))) +
+      labs(x = "Date", y = "Temperature (°C)") +
+  labs(title = "Ocean Temperatures")+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12,face="bold"))
+
+plot
+```
+
+## Highlights
+
+
+## References
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hunt, B.P.V., B.T. Johnson, S.C. Godwin, M. Krkosek, E.A. Pakhomov, and L. Rogers. 2018. The Hakai Institute Juvenile Salmon Program: early life history of sockeye, pink and chum salmon in British Columbia, Canada. NPAFC Doc. 1788. 14 pp. Institute for the Oceans and Fisheries and Department of Earth, Ocean and Atmospheric Sciences, University of British Columbia, Hakai Institute, Earth to Ocean Research Group, Simon Fraser University, Department of Ecology and Evolutionary Biology, University of Toronto, and Salmon Coast Field Station (Available at http://www.npafc.org).
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Johnson, B., Gan, J., Godwin, S., Bachen, K., van der Stap, T., Krkosek, M., Rogers, L. A., Portner, L., Janusson, C., & Hunt, B. P. V. (2017). Hakai Institute Juvenile Salmon Program Time Series. [Dataset] https://doi.org/10.21966/1.566666
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Krkošek, M., Morton, A., and Volpe, J.P. 2005b. Nonlethal assessment of juvenile pink and chum salmon for parasitic sea lice infections and fish health. Trans. Am. Fish. Soc. 134(3): 711–716. doi:10.1577/T04-133.1.

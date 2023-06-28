@@ -41,9 +41,9 @@ spp_labels <- c(HE = "Herring", CU = "Chum", PI = "Pink", SO = "Sockeye", DI = "
 
 # Run ctd_data_import_and_wrangle_2022.R 
 #source(here("2022_in_season_report", "ctd_data_import_and_wrangle_2022.R"))
-temperature_anomaly_data <- read_csv(here("2022_in_season_report", "data", "temperature_anomaly_data.csv"))
-average_temps <- read_csv(here("2022_in_season_report", "data", "average_temps.csv"))
-qu39_this_year <- read_csv(here("2022_in_season_report", "data", "qu39_this_year.csv"))
+temperature_anomaly_data <- read_csv(here("data", "temperature_anomaly_data.csv"))
+average_temps <- read_csv(here("data", "average_temps.csv"))
+qu39_this_year <- read_csv(here("data", "qu39_this_year.csv"))
 
 survey_seines_GH <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/supplemental_materials/report_data/survey_seines.csv") |> 
   mutate(sampling_week = as.numeric((yday(survey_date) + 4) %/% 7)) |> 
@@ -389,7 +389,7 @@ _Prevalence_: Number of individuals of a host species infected with a particular
 
 # In 2019 we field liced (including attached stages) 10 sockeye, and only 3 pink and 3 chum from every seine
 
-catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv") |> left_join(sites, by = "site_id")
+catch_data <- read_csv("https://raw.githubusercontent.com/HakaiInstitute/jsp-data/master/jsp_catch_and_bio_data_complete.csv", guess_max = 1600) |> left_join(sites, by = "site_id")
 
 # Define sites that can be compared between years
 consistent_sites <-  c("D07","D09","D22","D27","D10","D08","D34","D35",
@@ -417,7 +417,8 @@ current_lice <- read_sheet(field_data_url, sheet = "sealice_field_data") |>
   select(survey_date, seine_id, ufn, species,lep_cope, lam, laf, lgf, cal_cope,
          cam, caf, cgf, inferred_leps, inferred_cal) |> 
 # Make 1 row an observation of one louse
-  pivot_longer(cols = lep_cope:inferred_cal, names_to = "louse_species", values_to = "count") |> 
+  pivot_longer(cols = lep_cope:inferred_cal, names_to = "louse_species", 
+               values_to = "count") |> 
 # Assign stages
   mutate(life_stage = if_else(louse_species %in% c("cal_cope", "lep_cope", "inferred_leps", "inferred_cal"), "attached", "motile"),
 # Assign species
@@ -560,12 +561,16 @@ hosts <- bind_rows(current_lice_n, sealice_lab_fs_n, lab_mots_ts_n, sealice_fiel
                values_to = "n_hosts") |> 
   mutate(life_stage = if_else(life_stage == "n_hosts_motile", "motile", "attached"))
   
-sealice_df <- bind_rows(sealice_lab_fs, current_lice, sealice_field, lab_mots_ts) |>
+sealice_df_long <- bind_rows(sealice_lab_fs, current_lice, sealice_field, lab_mots_ts) |>
   filter(!species == "CO") |> 
   drop_na(count) |>
   mutate(year = year(survey_date)) |> 
   left_join(hosts, by = c("species", "year", "life_stage")) |> 
-  ungroup()|>
+  ungroup()
+
+write_csv(sealice_df_long, here("sealice_df_long.csv"))
+
+sealice_df <- sealice_df_long |> 
   dplyr::group_by(year, species, louse_species, life_stage) |> 
   dplyr::summarize(mean_abundance = mean(count, na.rm = TRUE),
                    sd = sd(count),
@@ -580,6 +585,8 @@ sealice_df$species <- recode(sealice_df$species, SO = "Sockeye",
 
 sealice_df$species <- factor(sealice_df$species) |> 
    fct_relevel("Sockeye", "Pink", "Chum")
+
+write_csv(sealice_df, here("2022_in_season_report", "sealice_abund_ts.csv"))
 ```
 
 ```{r abundance plot, fig.cap= "The mean abundance (+/- 1 SE) of sea lice in the Discovery Islands, BC.",fig.dim=c(7, 7)}
