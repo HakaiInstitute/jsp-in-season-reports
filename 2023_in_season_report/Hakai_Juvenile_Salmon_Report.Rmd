@@ -21,7 +21,7 @@ header-includes:
 
 
 ```{r setup, include = FALSE}
-# Before running this code, search for the previous years text (ie. 2022) in figure captions and replace with the actual previous year ie. 2023. 
+# Before running this code, search for the previous years text (ie. 2022) in figure captions and replace with the actual year ie. 2023. 
 
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE)
 library(tidyverse)
@@ -33,7 +33,48 @@ library(hakaiApi)
 library(hakaiR)
 options(scipen=999) # This removes scientific notation for inline output ie `r object` in the report text
 theme_set(hakaiR::hakademic_theme(base_size = 17))
+hakai_palettes <- list(
+  hakai_web = c(
+    "#a58457",
+    "#B60C0F",
+    "#78b6aa",
+    "#1d57d5",
+    "#40b55e",
+    "#60097f",
+    "#f4dd59",
+    "#ed7744"
+    ),
+  Zissou1 = c("#3B9AB2", "#78B7C5", "#EBCC2A", "#E1AF00", "#F21A00"),
+  hakai_salmon = c( "#B60C0F",# Sockeye
+                         "pink",# Pink
+                        "#4f7482", # Coho
+                        "#D55E00",
+                        "#fbd356",
+                    "#60097f"),# Herring. TODO: Need Chinook colour!
+  Darjeeling1 = c("#FF0000", "#00A08A", "#F2AD00", "#F98400", "#5BBCD6")
+)
 
+hakai_palette <- function(name, n, type = c("discrete", "continuous")) {
+  type <- match.arg(type)
+
+  pal <- hakai_palettes[[name]]
+  if (is.null(pal))
+    stop("Palette not found.")
+
+  if (missing(n)) {
+    n <- length(pal)
+  }
+
+  if (type == "discrete" && n > length(pal)) {
+    stop("Number of requested colors greater than what palette can offer")
+  }
+
+  out <- switch(type,
+                continuous = grDevices::colorRampPalette(pal)(n),
+                discrete = pal[1:n]
+  )
+  structure(out, class = "palette", name = name)
+}
 # replace with current years URL to the field data google sheet
 field_data_url <- "https://docs.google.com/spreadsheets/d/1Y8Nw82hHSb_GDXYzwg5hKI34bYlFnkLsir_V_fGdVCw/edit#gid=0"
 
@@ -116,11 +157,25 @@ ss_fish_current <- left_join(fish_field_current, ss_current)
 
 n_seasons <- max(year(ss_current$survey_date) - 2015) + 1
 
+# Create list of authors ordered by n field days
+# Use map to apply the function to each element of the vector
+all_names <- surveys_current$crew %>% 
+  map(~strsplit(.x, ",")[[1]]) %>% 
+  map(trimws)
+
+all_names_flat <- unlist(all_names)
+crew <- table(all_names_flat)
+crew <- as.data.frame(crew)
+crew <- crew[order(-crew$Freq), ]
+crew <- tibble(crew)
+crew$all_names_flat <- recode(crew$all_names_flat, "Tim Van Der Stap" = "Tim van der Stap")
+
+
 ```
 
 ## Aim 
 
-To provide a rapid end of season summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia region in British Columbia, Canada. 
+To provide a rapid end of season summary of juvenile salmon migration characteristics and oceanographic conditions in the Discovery Islands and northern Strait of Georgia in British Columbia, Canada. 
 
 ## Background
 
@@ -128,7 +183,7 @@ The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. 
 
 1) Strait of Georgia – stratified high plankton biomass zone; and 
 
-2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of, historically, high potential for wild-farmed fish interactions.
+2) Discovery Islands – highly-mixed low-plankton-biomass zone, and area of, historically, high potential for wild and farmed salmon interactions.
 
 ## Program Objectives
 
@@ -142,7 +197,7 @@ The Hakai Institute Juvenile Salmon Program was launched in the spring of 2015. 
 
 ## Key Parameters Reported
 
-* Catch Statistics
+* Catch Statistics and Migration Timing
 * Lengths
 * Parasite Loads
 * Ocean Temperatures
@@ -157,9 +212,12 @@ knitr::include_graphics(here::here(paste0(current_year, "_in_season_report"), "f
 
 
 ```
+
+Field Crew: `r crew$all_names_flat`
+
 \newpage
 
-# Migration Timing
+# Catches and Migration Timing
 
 
 ```{r fig.cap = "Dates, sites, and catches of seining operations in 2023. Note NA indicates the seine was not set."}
@@ -168,38 +226,110 @@ ss_current |>
   knitr::kable()
 ```
 
+```{r cumulative catch timing, fig.cap = "Migration timing of juvenile sockeye salmon in the Discovery Islands in 2023 compared to 2015-2022 modelled using a logistic growth curve fitted to cumulative catch for each period."}
+dbl_effort_2019 <- survey_seines_GH %>% 
+  distinct(survey_id, .keep_all = TRUE) %>% 
+  filter(survey_date > as.Date("2019-01-01") & survey_date < ("2019-12-31")) %>% 
+  mutate(week = isoweek(survey_date),
+         site_week = paste(site_id,week,sep="-")) %>% 
+  group_by(site_week) %>% 
+  mutate(count=n()) %>% 
+  filter(count>1) %>% 
+  mutate_at(c("so_total", "pi_total", "cu_total", "co_total", "he_total"),
+            mean) %>% 
+  mutate_at(c("so_total", "pi_total", "cu_total", "co_total", "he_total"),
+            round)
 
-```{r rolling mean ts v current, fig.cap = "Purse seine catches of juvenile sockeye (bars) and rolling seven day averages (lines) in 2023 compared to catches averaged by day across all years in the Hakai Juvenile Salmon Program time series from 2015-2022.", include = TRUE}
-df <- select(ss_current, date = survey_date, so_total) |> 
-  mutate(group = as.character(current_year))
+tidy_catch <- select(survey_seines_GH, survey_date, survey_id, region, so_total) |> 
+  filter(!survey_id %in% dbl_effort_2019$survey_id) |> 
+  filter(region == "DI") |> 
+  select(-region, -survey_id) |> 
+  drop_na() |> 
+  filter(so_total > 0) |> 
+  mutate(year = year(survey_date),
+         yday = yday(survey_date)) 
 
-dfall <- select(survey_seines_GH, survey_date, so_total) |> 
-  group_by(survey_date) |> 
-  summarize(so_total = mean(so_total)) |> 
-   mutate(year = current_year, # This is a trick to get the averages to compute for the same day between years
-         month = month(survey_date),
-         day = day(survey_date),
-         date = as_date(paste(year,month,day,  sep = "-"))) |> 
-  group_by(date) |> 
-  summarize(so_total = mean(so_total)) |> 
-  mutate(group = "2015-2022") |> 
-  ungroup()
+dbl_effort_2019 <- dbl_effort_2019 %>% 
+  # Remove secondary surveys so only one record remains that contains the averaged catch values
+  distinct(site_week, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  select(survey_date, so_total)
 
-ss_all <- bind_rows(df,dfall)
-
-ss_all |> 
-  mutate(seven_avg= zoo::rollmean(so_total, 5,
-                             fill=NA)) |>
-   ggplot(aes(x=date,
-             y=so_total)) +
-  geom_bar(aes(fill = group), alpha = .35, stat = "identity", position=position_dodge())+
-  geom_line(aes(y = seven_avg, group = group, colour = group), 
-            size = .75) +
-  ylab("Sockeye catch") +
-  xlab("Date") +
-  theme(legend.title=element_blank()) +
-  theme(legend.justification=c(1,1), legend.position=c(1,1)) 
+# Calculate cumulative sum and daily percent within each year. Fit line through that
+c_catch_avgs <- tidy_catch |> 
+  bind_rows(dbl_effort_2019) |> 
+  group_by(year, survey_date) |> 
+  summarize(so_total = mean(so_total, na.rm = TRUE)) |> 
+  ungroup() |> 
+  group_by(year) |> 
+  mutate(percent = cumsum(so_total / sum(so_total) * 100),
+         non_cumul_prop = so_total / sum(so_total)) |> 
+  ungroup() |> 
+  mutate(yday = yday(survey_date))
   
+
+df <- c_catch_avgs
+
+# Let's start by defining some initial estimates
+Asym <- max(df$percent)   # the maximum observed percent catch
+xmid <- median(df$yday)   # the median day of the year
+scal <- 1                 # this is a rough guess, you may need to adjust
+
+# Now we'll fit the logistic growth curve
+fit <- nls(percent ~ Asym / (1 + exp((xmid - yday)/scal)), 
+           data = df, 
+           start = list(Asym=Asym, xmid=xmid, scal=scal))
+
+
+current <- ss_current |> 
+  select(survey_date, so_total) |> 
+  mutate(yday = yday(survey_date)) |> 
+  filter(so_total > 0) |> 
+  mutate(percent = cumsum(so_total / sum(so_total) * 100))
+
+Asym <- max(current$percent)   # the maximum observed percent catch
+xmid <- median(current$yday)   # the median day of the year
+scal <- 1                 # this is a rough guess, you may need to adjust
+
+# Now we'll fit the logistic growth curve
+fit2 <- nls(percent ~ Asym / (1 + exp((xmid - yday)/scal)), 
+           data = current, 
+           start = list(Asym=Asym, xmid=xmid, scal=scal))
+
+# Print the fit summary
+
+library(ggplot2)
+
+# Generate a sequence of days to represent the fitted curve
+newdata <- data.frame(yday = seq(min(df$yday), max(df$yday), length.out = 100))
+
+# Predict the percent catch for these new data using the fitted model
+newdata$predicted_percent <- predict(fit, newdata = newdata)
+newdata$predicted_current <- predict(fit2, newdata = newdata)
+
+newdata <- newdata |> 
+  pivot_longer(cols = starts_with("predicted"),
+               names_to = "period",
+               values_to = "predicted")
+
+# Plot the observed data and the fitted curve
+ggplot(data = newdata) +
+  #geom_point(data = df, aes(x = yday, y=percent), colour = "red") +
+  #geom_point(data = current, aes(x = yday, y=percent), colour = "blue") +
+  geom_line(aes(yday, predicted, linetype = period), size = 1.) +
+  labs(x = 'Date', y = 'Cumulative Catch %') +
+  scale_colour_discrete(name  = "",
+                            breaks=c("predicted_current", "predicted_percent"),
+                            labels=c("2023", "2015-2022")) +
+      scale_linetype_discrete(name  = "",
+                            breaks=c("predicted_current", "predicted_percent"),
+                            labels=c("2023", "2015-2022")) +
+   scale_x_continuous(breaks = c(135, 152, 166, 182, 196), 
+                     labels = c("May 15", "June 1", "June 15", 
+                                "July 1", "July 15")) +
+  theme(legend.position = c(0.8, 0.5))
+
+
 
 ```
 
@@ -238,7 +368,7 @@ catch_intensity <- bind_rows(catch_intensity, catch_intensity_current)
 catch_intensity$species <- catch_intensity$species |>
   fct_relevel("Sockeye", "Pink", "Chum")
 
-(ggplot(catch_intensity, aes(x = factor(year), y = mean_catch, fill = species)) +
+ggplot(catch_intensity, aes(x = factor(year), y = mean_catch, fill = species)) +
   geom_bar(colour = "black",  stat="identity", position=position_dodge()) +
   geom_errorbar(aes(ymin = mean_catch - se, ymax = mean_catch + se),
                     width = 0.2,
@@ -247,8 +377,9 @@ catch_intensity$species <- catch_intensity$species |>
                 position = position_dodge(0.9)) +
   xlab("Year") +
   ylab("Catch Intensity") +
+    coord_cartesian(ylim = c(0,1150)) +
   labs(fill = "Species") +
-  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon"))) +
+  scale_fill_manual(values = hakaiR::hakai_palette("hakai_salmon")) +
   theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=16))
 ```
 
@@ -267,7 +398,8 @@ species_prop_current <- ss_current |>
     pi_total,
     cu_total,
     co_total,
-    he_total
+    he_total,
+    ck_total
   ) |>
   # Next I remove instances when no sockeye were caught. I'm doing this because in 2015 and 2016 we only enumerated catches in which we caught sockeye, whereas in 2017 and 2018 we enumerated all seines. So to reduce the bias introduced from the field method i filter the comparison down to where field methods are comparable
   filter(so_total > 0) |>
@@ -280,6 +412,7 @@ species_prop_current <- ss_current |>
     `cu_total`,
     `co_total`,
     `he_total`,
+    `ck_total`,
     key = "species",
     value = "n"
   ) |>
@@ -299,9 +432,9 @@ species_prop_current <- spp_prop_expanded |>
 species_prop_total <- bind_rows(species_prop_2015_2022, species_prop_current)
 
 species_prop_total$species <- species_prop_total$species |> 
-  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total") |> 
+  fct_relevel("so_total", "pi_total", "cu_total", "co_total", "he_total", "ck_total") |> 
   fct_recode("Sockeye" = "so_total", "Pink" = "pi_total", "Chum" = "cu_total", "Coho" = "co_total",
-             "Herring" = "he_total")
+             "Herring" = "he_total", "Chinook" = "ck_total")
 
 # Plotting this in a stacked bar graph: 
 species_prop_total_graph <-  
@@ -309,7 +442,7 @@ species_prop_total_graph <-
       geom_bar(colour = "black", stat="identity", position = 'stack') +
       xlab("Year") +
       ylab("Proportion") +
-      scale_fill_manual(values = hakai_palette("hakai_salmon")) +
+      scale_fill_manual(values = hakai_palette("hakai_salmon", n = 6)) +
       labs(fill = "Species") +
       scale_x_continuous(n.breaks = n_seasons)
   
@@ -378,7 +511,7 @@ di_length_hist_plot
 
 ## Parasite Loads
 
-In 2023 we resumed enumerating both attached and motile sea lice in the field using hand lenses (Krkosek et al. 2005) after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes some years and species of salmon. Here we present the abundance and prevalence of attached stage lice in 2015, 2017, 2018, 2019, and 2023. Our time series for parasite loads is complete for motile sealice on sockeye, pink and chum spanning 2015-2023. 
+In 2023 we resumed enumerating both attached and motile sea lice in the field using hand lenses (Krkosek et al. 2005) after switching in 2020 to enumerating only motile sea lice under a dissecting microscope in the lab. As a result, our time series for attached stage lice excludes some years and species of salmon. Here we present the abundance and prevalence of attached stage lice in 2015, 2017, 2018, 2019, 2022 and 2023. Our time series for parasite loads is complete for motile sealice on sockeye, pink and chum spanning 2015-2023. 
 
 Note that species identification of attached chalimus sea lice stages was not conducted in the field. Instead species proportions of chalimus staged were inferred based on the ratio of species in the copepodite and motile stages in each year.
 
@@ -616,8 +749,6 @@ plot <- ggplot(data = temperature_anomaly_data, aes(x = yday, y = mean_temp)) +
 
 plot
 ```
-
-## Highlights
 
 
 ## References
